@@ -1,10 +1,15 @@
 #include "pe/Ghost/GhostPuppetActor.h"
-#include "al/Library/LiveActor/ActorInitFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
 #include "al/Library/LiveActor/ActorClippingFunction.h"
 #include "al/Library/LiveActor/ActorModelFunction.h"
 #include "al/Library/LiveActor/ActorSensorFunction.h"
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
+#include <prim/seadSafeString.h>
+
+namespace al {
+    class ActorInitInfo;
+    void initActorWithArchiveName(al::LiveActor* actor, const al::ActorInitInfo& initInfo, const sead::SafeString& archiveName, const char* suffix);
+}
 
 namespace pe {
 

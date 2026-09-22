@@ -46,12 +46,12 @@ void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr) {
     auto* ghostMgr = pe::GhostManager::instance();
     if (ghostMgr) {
         ghostMgr->update();
-        u32 trig = al::getPadTrigger(-1);
-        u32 held = al::getPadHold(-1);
-        bool rHeld = (held & 0x80) != 0;
-        if (rHeld && (trig & 0x2000)) ghostMgr->startRun();
-        if (rHeld && (trig & 0x8000)) ghostMgr->stopRun();
-        if (rHeld && (trig & 0x1000)) ghostMgr->resetRun();
+        // R + DPad-Up = Start timer | R + DPad-Down = Stop timer | R + DPad-Left = Reset
+        if (al::isPadHoldR(-1)) {
+            if (al::isPadTriggerUp(-1))   ghostMgr->startRun();
+            if (al::isPadTriggerDown(-1)) ghostMgr->stopRun();
+            if (al::isPadTriggerLeft(-1)) ghostMgr->resetRun();
+        }
     }
 }
 

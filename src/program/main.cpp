@@ -14,6 +14,7 @@
 #include "program/imgui_nvn.h"
 #include "pe/Ghost/ILTracker.h"
 #include "pe/Ghost/PBStorage.h"
+#include <sead/filedevice/seadFileDeviceMgr.h>
 
 HOOK_DEFINE_TRAMPOLINE(FileDeviceMgrCtor) { static void Callback(sead::FileDeviceMgr * thisPtr); };
 void FileDeviceMgrCtor::Callback(sead::FileDeviceMgr* thisPtr)

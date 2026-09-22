@@ -23,6 +23,8 @@ HOOK_DEFINE_TRAMPOLINE(FileDeviceMgrCtor) { static void Callback(sead::FileDevic
 void FileDeviceMgrCtor::Callback(sead::FileDeviceMgr* thisPtr) { Orig(thisPtr); thisPtr->mMountedSd = nn::fs::MountSdCardForDebug("sd").IsSuccess(); }
 
 class HakoniwaSequence;
+static al::Scene* sLastScene = nullptr;
+
 HOOK_DEFINE_TRAMPOLINE(HakoniwaSequenceInit) { static void Callback(HakoniwaSequence * thisPtr, const al::SequenceInitInfo& info); };
 void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::SequenceInitInfo& info) {
     Orig(thisPtr, info);
@@ -38,15 +40,13 @@ HOOK_DEFINE_TRAMPOLINE(HakoniwaSequenceUpdate) { static void Callback(HakoniwaSe
 void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr) {
     Orig(thisPtr);
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+    al::Scene* scene = *reinterpret_cast<al::Scene**>(reinterpret_cast<u8*>(thisPtr) + 0xb0);
+    sLastScene = scene;
     auto* menu = pe::Menu::instance();
-    if (menu) {
-        al::Scene* scene = *reinterpret_cast<al::Scene**>(reinterpret_cast<u8*>(thisPtr) + 0xb0);
-        menu->update(scene);
-    }
+    if (menu) menu->update(scene);
     auto* ghostMgr = pe::GhostManager::instance();
     if (ghostMgr) {
-        ghostMgr->update();
-        // R + DPad-Up = Start timer | R + DPad-Down = Stop timer | R + DPad-Left = Reset
+        ghostMgr->update(scene);
         if (al::isPadHoldR(-1)) {
             if (al::isPadTriggerUp(-1))   ghostMgr->startRun();
             if (al::isPadTriggerDown(-1)) ghostMgr->stopRun();
@@ -54,6 +54,15 @@ void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr) {
         }
     }
 }
+
+HOOK_DEFINE_TRAMPOLINE(SceneEndInitHook) {
+    static void Callback(al::Scene* scene, const al::ActorInitInfo& info) {
+        Orig(scene, info);
+        sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+        auto* ghostMgr = pe::GhostManager::instance();
+        if (ghostMgr) ghostMgr->initPuppet(info);
+    }
+};
 
 static void drawDbgGui() {
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
@@ -69,6 +78,7 @@ extern "C" void exl_main(void* x0, void* x1) {
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
     HakoniwaSequenceUpdate::InstallAtOffset(pe::offsets::HakoniwaSequenceUpdate);
+    SceneEndInitHook::InstallAtSymbol("_ZN2al5Scene7endInitERKNS_13ActorInitInfoE");
     pe::initMenuDPadDisableHooks();
     pe::installPracticeHacks();
     nvnImGui::InstallHooks();

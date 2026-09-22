@@ -14,14 +14,12 @@ enum class SegmentId : u8 {
     LostOdyssey, MetroOdyssey, SnowOdyssey, SeasideOdyssey, LuncheonOdyssey, RuinedOdyssey
 };
 
-struct ReplayFrame {
-    u32 mStep = 0;
-    float mPlayerX = 0, mPlayerY = 0, mPlayerZ = 0;
-    u32 mButtons = 0;
+struct GhostFrame {
+    float x, y, z;
 };
 
 struct GhostHeader {
-    u32 mMagic = 0x47485354; // 'GHST'
+    u32 mMagic = 0x47485354;
     u32 mVersion = 1;
     KingdomId mKingdomId = KingdomId::Unknown;
     SegmentId mSegmentId = SegmentId::FullKingdom;
@@ -37,5 +35,7 @@ struct PBRecord {
     s64 mBestTicks = 0;
     u32 mBestFrames = 0;
 };
+
+static constexpr int kMaxGhostFrames = 36000;
 
 } // namespace pe

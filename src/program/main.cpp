@@ -12,7 +12,8 @@
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Offsets.h"
 #include "program/imgui_nvn.h"
-#include <sead/filedevice/seadFileDeviceMgr.h>
+#include "pe/Ghost/ILTracker.h"
+#include "pe/Ghost/PBStorage.h"
 
 HOOK_DEFINE_TRAMPOLINE(FileDeviceMgrCtor) { static void Callback(sead::FileDeviceMgr * thisPtr); };
 void FileDeviceMgrCtor::Callback(sead::FileDeviceMgr* thisPtr)
@@ -27,9 +28,13 @@ void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::Sequenc
 {
     Orig(thisPtr, info);
 
-    pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 1, "MenuHeap", al::getSequenceHeap(), 8, sead::ExpHeap::cHeapDirection_Forward, false);
+    pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 4, "MenuHeap", al::getSequenceHeap(), 8, sead::ExpHeap::cHeapDirection_Forward, false);
 
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+    pe::PBStorage::createInstance(nullptr);
+    pe::PBStorage::instance()->init();
+    pe::ILTracker::createInstance(nullptr);
+    pe::ILTracker::instance()->init();
     pe::Menu::createInstance(nullptr);
 }
 

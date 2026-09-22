@@ -45,7 +45,6 @@ set (INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/lib/odyssey/lib
   ${PROJECT_SOURCE_DIR}/lib/odyssey/src
   ${PROJECT_SOURCE_DIR}/lib/odyssey/lib/agl/include
-  ${PROJECT_SOURCE_DIR}/lib/odyssey/lib/aarch64
 )
 include_directories(${INCLUDE_DIRS})
 

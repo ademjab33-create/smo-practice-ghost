@@ -1,8 +1,7 @@
-
 .PHONY: all clean
 
 BUILD_COUNTER_FILE := .build_counter
-GAME_VERSION := 130
+GAME_VERSION := 100
 
 all: increment_counter
 	cmake --toolchain=cmake/toolchain.cmake -S . -B build -DGAME_VERSION=$(GAME_VERSION) && $(MAKE) -C build
@@ -15,4 +14,3 @@ increment_counter:
 	@echo $$(($$(cat $(BUILD_COUNTER_FILE)) + 1)) > $(BUILD_COUNTER_FILE)
 	@echo "#pragma once" > include/pe/Util/BuildId.h
 	@echo "#define BUILD_ID $$(cat $(BUILD_COUNTER_FILE))" >> include/pe/Util/BuildId.h
-	

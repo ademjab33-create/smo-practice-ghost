@@ -51,7 +51,21 @@ include_directories(${INCLUDE_DIRS})
 
 file(GLOB_RECURSE SOURCES_ASM ${PROJECT_SOURCE_DIR}/src/*.s)
 file(GLOB_RECURSE SOURCES_C ${PROJECT_SOURCE_DIR}/src/*.c)
-file(GLOB_RECURSE SOURCES_CXX ${PROJECT_SOURCE_DIR}/src/*.cpp)
+
+file(GLOB_RECURSE SOURCES_LIB ${PROJECT_SOURCE_DIR}/src/lib/*.cpp)
+file(GLOB SOURCES_HELPERS ${PROJECT_SOURCE_DIR}/src/helpers/*.cpp)
+file(GLOB SOURCES_IMGUI_BACKEND ${PROJECT_SOURCE_DIR}/src/imgui_backend/*.cpp)
+file(GLOB SOURCES_GHOST ${PROJECT_SOURCE_DIR}/src/program/pe/Ghost/*.cpp)
+
+set(SOURCES_CXX
+  ${PROJECT_SOURCE_DIR}/src/program/main.cpp
+  ${PROJECT_SOURCE_DIR}/src/program/imgui_nvn.cpp
+  ${SOURCES_LIB}
+  ${SOURCES_HELPERS}
+  ${SOURCES_IMGUI_BACKEND}
+  ${SOURCES_GHOST}
+)
+
 file(GLOB IMGUI_SOURCES ${PROJECT_SOURCE_DIR}/lib/imgui/*.cpp)
 
 include(${CMAKE_SOURCE_DIR}/cmake/SwitchTools.cmake)

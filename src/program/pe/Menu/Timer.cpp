@@ -35,11 +35,9 @@ Timer::Timer()
 {
     sInstance = this;
 
-#if GAME_VERSION == 130
     using Patcher = exl::patch::CodePatcher;
     Patcher(offsets::ShineGrabHook).BranchLinkInst((void*)shineGrabHook);
     Patcher(offsets::ShineTickHook).BranchLinkInst((void*)shineTickHook);
-#endif
 }
 
 void Timer::start()

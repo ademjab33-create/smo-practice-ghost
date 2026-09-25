@@ -308,7 +308,7 @@ void Menu::update(al::Scene* scene)
     }
     mTimer++;
 
-    if (scene && scene->mIsAlive) {
+    if (scene && scene->mIsAlive && rs::getPlayerActor(scene) != nullptr) {
         StageScene* stageScene = static_cast<StageScene*>(scene);
         if (stageScene->mHolder) {
             static const char* (*sGetCurrentStageName)(GameDataHolderAccessor) = nullptr;

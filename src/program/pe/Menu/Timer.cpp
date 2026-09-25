@@ -30,10 +30,6 @@ static bool shineTickHook(al::LiveActor* actor)
 Timer::Timer()
 {
     sInstance = this;
-
-    using Patcher = exl::patch::CodePatcher;
-    Patcher(offsets::ShineGrabHook).BranchLinkInst((void*)shineGrabHook);
-    Patcher(offsets::ShineTickHook).BranchLinkInst((void*)shineTickHook);
 }
 
 void Timer::start()

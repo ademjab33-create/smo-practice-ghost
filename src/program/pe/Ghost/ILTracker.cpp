@@ -1,7 +1,7 @@
 #include "pe/Ghost/ILTracker.h"
 #include "System/GameDataHolder.h"
 #include "al/Library/Scene/Scene.h"
-#include "al/Library/Scene/SceneObjUtil.h"
+#include "Scene/SceneObjUtil.h"
 #include "nn/os.h"
 #include "pe/Ghost/GhostManager.h"
 #include "pe/Menu/Timer.h"

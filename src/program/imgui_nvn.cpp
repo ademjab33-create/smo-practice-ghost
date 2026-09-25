@@ -1,5 +1,5 @@
-#include <cstdlib>
 #include "imgui_nvn.h"
+#include <cstdlib>
 #include "helpers/InputHelper.h"
 #include "imgui_backend/imgui_impl_nvn.hpp"
 #include "lib.hpp"
@@ -76,6 +76,8 @@ NVNboolean cmdBufInit(nvn::CommandBuffer* buffer, nvn::Device* device)
 {
     NVNboolean result = tempBufferInitFuncPtr(buffer, device);
     nvnCmdBuf = buffer;
+    if (!nvnDevice && device)
+        nvnDevice = device;
 
     if (!hasInitImGui) {
         hasInitImGui = nvnImGui::InitImGui();
@@ -86,8 +88,10 @@ NVNboolean cmdBufInit(nvn::CommandBuffer* buffer, nvn::Device* device)
 
 nvn::GenericFuncPtrFunc getProc(nvn::Device* device, const char* procName)
 {
+    if (!nvnDevice && device)
+        nvnDevice = device;
 
-    nvn::GenericFuncPtrFunc ptr = tempGetProcAddressFuncPtr(nvnDevice, procName);
+    nvn::GenericFuncPtrFunc ptr = tempGetProcAddressFuncPtr(device ? device : nvnDevice, procName);
 
     if (strcmp(procName, "nvnQueueInitialize") == 0) {
         tempQueueInitFuncPtr = (nvn::QueueInitializeFunc)ptr;
@@ -205,13 +209,11 @@ void nvnImGui::procDraw()
 void nvnImGui::InstallHooks()
 {
     NvnBootstrapHook::InstallAtSymbol("nvnBootstrapLoader");
-#if GAME_VERSION == 130
     DisableFullKeyState::InstallAtSymbol("_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadFullKeyStateEiRKj");
     DisableHandheldState::InstallAtSymbol("_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadHandheldStateEiRKj");
     DisableJoyDualState::InstallAtSymbol("_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyDualStateEiRKj");
     DisableJoyLeftState::InstallAtSymbol("_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_16NpadJoyLeftStateEiRKj");
     DisableJoyRightState::InstallAtSymbol("_ZN2nn3hid6detail13GetNpadStatesEPiPNS0_17NpadJoyRightStateEiRKj");
-#endif
 }
 
 bool nvnImGui::InitImGui()
@@ -221,15 +223,11 @@ bool nvnImGui::InitImGui()
         IMGUI_CHECKVERSION();
 
         ImGuiMemAllocFunc allocFunc = [](size_t size, void* user_data) {
-            auto* alloc = nn::init::GetAllocator();
-            if (alloc) return alloc->Allocate(size);
             return malloc(size);
         };
 
         ImGuiMemFreeFunc freeFunc = [](void* ptr, void* user_data) {
-            auto* alloc = nn::init::GetAllocator();
-            if (alloc) alloc->Free(ptr);
-            else free(ptr);
+            free(ptr);
         };
 
         ImGui::SetAllocatorFunctions(allocFunc, freeFunc, nullptr);
@@ -237,6 +235,9 @@ bool nvnImGui::InitImGui()
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO();
         (void)io;
+        if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f) {
+            io.DisplaySize = ImVec2(1280.0f, 720.0f);
+        }
 
         ImGui::StyleColorsDark();
 

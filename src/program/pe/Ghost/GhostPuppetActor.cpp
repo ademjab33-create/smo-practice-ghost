@@ -9,8 +9,8 @@ namespace al {
     void initActorWithArchiveName(al::LiveActor* actor, const al::ActorInitInfo& initInfo, const sead::SafeString& archiveName, const char* suffix);
 }
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
-#include "al/Library/LiveActor/ActorSensorUtil.h"
-#include "al/Library/LiveActor/SubActorKeeper.h"
+#include "al/Library/LiveActor/ActorSensorFunction.h"
+#include "al/Library/LiveActor/LiveActorFunction.h"
 #include <cstring>
 
 namespace pe {
@@ -106,15 +106,9 @@ void GhostPuppetActor::applyShaderTransparency()
     // Appliquer le masque alpha sur le corps de Mario
     al::setModelAlphaMask(this, mGhostAlpha);
 
-    // Synchroniser l'alpha sur les sous-acteurs (tête, mains, etc.)
-    al::SubActorKeeper* subKeeper = getSubActorKeeper();
-    if (subKeeper) {
-        for (int i = 0; i < subKeeper->getSubActorNum(); i++) {
-            al::LiveActor* subActor = subKeeper->getSubActor(i);
-            if (subActor) {
-                al::setModelAlphaMask(subActor, mGhostAlpha);
-            }
-        }
+    // Synchroniser l'alpha sur les sous-acteurs
+    if (getSubActorKeeper()) {
+        alSubActorFunction::trySyncModelAlphaMask(getSubActorKeeper(), mGhostAlpha);
     }
 
     // Appliquer la transparence sur Cappy

@@ -36,21 +36,30 @@ enum MofumofuPattern : s8 {
 
 struct UserConfig {
     PeepaLanguage currentLanguage = PeepaLanguage::English;
-    ActionType mDUpBind = ActionType::None;
-    ActionType mDDownBind = ActionType::None;
-    ActionType mDLeftBind = ActionType::None;
-    ActionType mDRightBind = ActionType::None;
-    ActionType mQuickMenuBinds[8] { ActionType::None };
+    ActionType mDUpBind = ActionType::KillScene;
+    ActionType mDDownBind = ActionType::PrevScene;
+    ActionType mDLeftBind = ActionType::SavePosition;
+    ActionType mDRightBind = ActionType::LoadPosition;
+    ActionType mQuickMenuBinds[8] {
+        ActionType::SavePosition, ActionType::LoadPosition, ActionType::HealMario, ActionType::Add1000Coin,
+        ActionType::KillScene, ActionType::PrevScene, ActionType::StartTimer, ActionType::ResetTimer
+    };
     ActionType mRsLBind = ActionType::None;
     ActionType mRsRBind = ActionType::None;
-    ActionType mZLZRBind = ActionType::None;
-    ImVec2 mTimerPos = ImVec2(1600.f / 2, 900.f / 2);
-    bool mTimerEnabled = false;
+    ActionType mZLZRBind = ActionType::KillScene;
+
+    // Timer config: top-right by default, enabled by default, auto kingdom IL
+    ImVec2 mTimerPos = ImVec2(1250.f, 35.f);
+    bool mTimerEnabled = true;
+    bool mTimerAutoKingdom = true;
     bool mTimerIsRTA = true;
     bool mTimerSplit = true;
-    float mTimerFontSize = 50;
+    float mTimerFontSize = 50.0f;
     TimerHookType mTimerStartType = TimerHookType::None;
+
+    // Input display
     bool mInputDisplayEnabled = true;
+    bool mInputDisplay2P = false;
     ImVec2 mInputDisplayPos = ImVec2(1600.f / 2, 900.f / 2);
     InputDisplayColor mInputDisplayButtonColor = InputDisplayColor::White;
     InputDisplayColor mInputDisplayButtonPressedColor = InputDisplayColor::Pink;
@@ -58,20 +67,52 @@ struct UserConfig {
     InputDisplayColor mInputDisplayRingColor = InputDisplayColor::Gray;
     InputDisplayColor mInputDisplayBackColor = InputDisplayColor::Black;
 
-    bool mIsBgmDisabled = false;
-    bool mIsShineRefreshEnabled = false;
+    // Refresh Settings (from Practice 1.0)
+    bool mIsMoonRefreshEnabled = false;
     bool mIsGrayShineRefreshEnabled = false;
+    bool mIsPurpleCoinsRefreshEnabled = false;
+    bool mIsDoorRefreshEnabled = false;
+    bool mIsMoonShardsRefreshEnabled = false;
+    bool mIsKingdomEnterCutsceneRefreshEnabled = false;
+    bool mIsWarpTextRefreshEnabled = false;
+    bool mIsSeedsRefreshEnabled = false;
+    bool mIsCutsceneRefreshEnabled = false;
+
+    // Gameplay & Disable Toggles (from Practice 1.0)
+    bool mIsSeedsGrowing = false;
+    bool mIsAlwaysManualCutscene = false;
+    bool mIsAlwaysCheckpoints = false;
+    bool mIsDisableMoonLock = false;
     bool mIsEnableAutosave = true;
-    bool mIsEnableWarpsAlways = false;
+    bool mIsDisableTpPuppet = false;
+    bool mIsBgmDisabled = false;
+    bool mIsNoDamageEnabled = false;
+    bool mDisableCheckpointTouching = false;
+    bool mIsSkipCloudEnabled = false;
+    bool mIsSkipBroodalsEnabled = false;
+    bool mIsAllCheckpointsEnabled = false;
+    bool mIsLuigiPixelsEnabled = false;
+    bool mIsHintPhotoSpawnEnabled = false;
+
+    // Misc (from Practice 1.0 & 1.3)
     MofumofuPattern mCurPattern = Random;
-    bool mIsEnableDownthrowOnly = false;
+    bool mIsNoclipEnabled = false;
+    int mMoonNameIdx = 0;
+    int mSelectedBody = 0;
+    int mSelectedCap = 0;
+    bool mIsInfoWindowEnabled = false;
+    bool mIsPlayerInfoEnabled = false;
+    ImVec2 mInfoPos = ImVec2(50.f, 50.f);
+
+    // Stage
     int mSelectedStageIdx = 0;
     int mSelectedScenario = 0;
+
+    // Wheel
     int mWheelDelayFrames = 1;
     bool mWheelActivatedPressRightStick = false;
-    bool mDisableCheckpointTouching = false;
 
-    // Ghost Replay & PB Tracking
+    // Ghost
     bool mGhostEnabled = true;
     bool mPBOverlayEnabled = true;
     float mGhostAlpha = 0.45f;

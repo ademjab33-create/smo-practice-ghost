@@ -67,10 +67,6 @@ bool IsGotShine::Callback(void* accessor, void* shineInfo)
 void SetGotShine::Callback(GameDataHolderWriter writer, void* shineInfo)
 {
     auto* cfg = getConfig();
-    if (cfg && cfg->mMoonNameIdx >= 0 && cfg->mMoonNameIdx < 8) {
-        exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
-        strncpy((char*)a.GetRw(), sCustomMoonNames[cfg->mMoonNameIdx], 24);
-    }
     if (!cfg || !cfg->mIsMoonRefreshEnabled)
         Orig(writer, shineInfo);
 }
@@ -107,16 +103,18 @@ static int getMofumofuTarget(int a)
     return r;
 }
 
-static bool isEnableCheckpointWarp(MapLayout* thisPtr)
+HOOK_DEFINE_TRAMPOLINE(IsEnableSave) { static bool Callback(StageScene* scene); };
+bool IsEnableSave::Callback(StageScene* scene)
 {
     auto* cfg = getConfig();
-    return (cfg && (cfg->mIsAlwaysCheckpoints || cfg->mIsAllCheckpointsEnabled)) ? true : thisPtr->isEnableCheckpointWarp();
+    return (cfg && cfg->mIsEnableAutosave) ? Orig(scene) : false;
 }
 
-static bool isEnableSave(StageScene* scene)
+HOOK_DEFINE_TRAMPOLINE(IsEnableCheckpointWarp) { static bool Callback(MapLayout* thisPtr); };
+bool IsEnableCheckpointWarp::Callback(MapLayout* thisPtr)
 {
     auto* cfg = getConfig();
-    return (cfg && cfg->mIsEnableAutosave) ? scene->isEnableSave() : false;
+    return (cfg && (cfg->mIsAlwaysCheckpoints || cfg->mIsAllCheckpointsEnabled)) ? true : Orig(thisPtr);
 }
 
 bool IsPadTriggerA::Callback(s32 port)
@@ -336,28 +334,12 @@ void NoclipHook::Callback(PlayerActorHakoniwa* player)
 
 void installPracticeHacks()
 {
-#if GAME_VERSION == 130
-    using Patcher = exl::patch::CodePatcher;
+    IsEnableSave::InstallAtOffset(0x004731a0);
+    IsEnableCheckpointWarp::InstallAtOffset(0x001d0b00);
 
-    IsGotShine::InstallAtOffset(offsets::GameDataFileIsGotShine);
-    SetGotShine::InstallAtOffset(offsets::GameDataFunctionSetGotShine);
-    StartBgm1::InstallAtOffset(offsets::StartBgm1);
-    StartBgm2::InstallAtOffset(offsets::StartBgm2);
-    DoCheckpointTouchNotify::InstallAtOffset(offsets::CheckpointTouchHook);
-
-    Patcher(0x000a46ec).BranchLinkInst((void*)getMofumofuTarget);
-    Patcher(0x000a4698).BranchLinkInst((void*)isPatternReverse);
-    Patcher(0x001d1584).BranchLinkInst((void*)isEnableCheckpointWarp);
-    Patcher(0x004742d0).BranchLinkInst((void*)isEnableSave);
-    Patcher(0x004b1c78).BranchLinkInst((void*)isEnableSave);
-    Patcher(0x004b4fa4).BranchLinkInst((void*)isEnableSave);
-
-    Patcher(0x0049d3d0).BranchLinkInst((void*)setMapTargetUpdateNullNerve);
-    IsPadTriggerA::InstallAtOffset(0x005cfbd0);
-
-    exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
-    strncpy((char*)a.GetRw(), "Practice Mod", 24);
-#endif
+    IsGotShine::InstallAtSymbol("_ZN16GameDataFunction10isGotShineE22GameDataHolderAccessorPK9ShineInfo");
+    SetGotShine::InstallAtSymbol("_ZN16GameDataFunction11setGotShineE20GameDataHolderWriterPK9ShineInfo");
+    DoCheckpointTouchNotify::InstallAtSymbol("_ZN2rs31setTouchCheckpointFlagToWatcherEP14CheckpointFlag");
 
     NoDamageHook::InstallAtSymbol("_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
     WarpTextHook::InstallAtSymbol("_ZN16GameDataFunction34isAlreadyShowExplainCheckpointFlagE22GameDataHolderAccessor");

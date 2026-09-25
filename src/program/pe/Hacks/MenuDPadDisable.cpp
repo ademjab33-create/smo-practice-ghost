@@ -13,36 +13,48 @@ HOOK_DEFINE_TRAMPOLINE(DPadDown) { static bool Callback(int port); };
 HOOK_DEFINE_TRAMPOLINE(DPadLeft) { static bool Callback(int port); };
 HOOK_DEFINE_TRAMPOLINE(DPadRight) { static bool Callback(int port); };
 
-static bool dpadHook(int port, int mask)
-{
-    if (pe::Menu::instance()->isEnabled())
-        return false;
-    return al::isPadTrigger(port, mask);
-}
-
 bool DPadUp::Callback(int port)
 {
-    if (getConfig()->mDUpBind != ActionType::None)
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
-    return dpadHook(port, 1 << 16);
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDUpBind != ActionType::None)
+        return false;
+    return Orig(port);
 }
+
 bool DPadDown::Callback(int port)
 {
-    if (getConfig()->mDDownBind != ActionType::None)
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
-    return dpadHook(port, 1 << 17);
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDDownBind != ActionType::None)
+        return false;
+    return Orig(port);
 }
+
 bool DPadLeft::Callback(int port)
 {
-    if (getConfig()->mDLeftBind != ActionType::None)
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
-    return dpadHook(port, 1 << 18);
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDLeftBind != ActionType::None)
+        return false;
+    return Orig(port);
 }
+
 bool DPadRight::Callback(int port)
 {
-    if (getConfig()->mDRightBind != ActionType::None)
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
-    return dpadHook(port, 1 << 19);
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDRightBind != ActionType::None)
+        return false;
+    return Orig(port);
 }
 
 void initMenuDPadDisableHooks()

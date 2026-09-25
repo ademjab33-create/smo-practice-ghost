@@ -15,7 +15,6 @@
 #include "pe/Menu/Menu.h"
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Offsets.h"
-#include "pe/Ghost/ILTracker.h"
 #include "Player/PlayerActorHakoniwa.h"
 #include "replace.hpp"
 #include "util/modules.hpp"
@@ -228,8 +227,8 @@ bool CloudSkipHook::Callback(StageScene* stageScene)
     functionCalls++;
     if (functionCalls == 2) {
         functionCalls = 0;
-        if (ILTracker::instance()) {
-            ILTracker::instance()->endRun();
+        if (cfg && cfg->mTimerAutoKingdom && Timer::sInstance) {
+            Timer::sInstance->stop();
         }
         return true;
     }
@@ -288,13 +287,9 @@ bool ShowDemoHackHook::Callback(void* thisPtr)
 
 void WorldWarpChangeStageHook::Callback(GameDataHolder* thisPtr, const char* stageName)
 {
-    if (ILTracker::instance()) {
-        if (ILTracker::instance()->getCurrentKingdom() == KingdomId::Cap) {
-            ILTracker::instance()->notifyCapEnd();
-        } else {
-            ILTracker::instance()->notifyOdyssey();
-        }
-        ILTracker::instance()->notifyBlackScreen();
+    auto* cfg = getConfig();
+    if (cfg && cfg->mTimerAutoKingdom && Timer::sInstance) {
+        Timer::sInstance->stop();
     }
     Orig(thisPtr, stageName);
 }

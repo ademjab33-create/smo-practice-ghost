@@ -36,10 +36,6 @@
 #include "pe/Menu/Timer.h"
 #include "pe/Menu/UserConfig.h"
 #include "pe/Menu/Vector2MenuComponent.h"
-#include "pe/Ghost/GhostManager.h"
-#include "pe/Ghost/ILTracker.h"
-#include "pe/Ghost/PBOverlay.h"
-#include "pe/Ghost/PBStorage.h"
 #include "pe/Util/Localization.h"
 #include "pe/Util/Nerve.h"
 #include "pe/Util/Offsets.h"
@@ -59,26 +55,6 @@ sead::Heap*& getMenuHeap()
 }
 
 SEAD_SINGLETON_DISPOSER_IMPL(Menu)
-
-static constexpr const char* sStageNames[] {
-    "CapWorldHomeStage",
-    "WaterfallWorldHomeStage",
-    "SandWorldHomeStage",
-    "LakeWorldHomeStage",
-    "ForestWorldHomeStage",
-    "CloudWorldHomeStage",
-    "ClashWorldHomeStage",
-    "CityWorldHomeStage",
-    "SnowWorldHomeStage",
-    "SeaWorldHomeStage",
-    "LavaWorldHomeStage",
-    "BossRaidWorldHomeStage",
-    "SkyWorldHomeStage",
-    "MoonWorldHomeStage",
-    "PeachWorldHomeStage",
-    "Special1WorldHomeStage",
-    "Special2WorldHomeStage"
-};
 
 static constexpr const char* sPatternNames[] {
     "Random", "Ghost", "Nose", "C", "W", "J", "Medal", "Plane", "Five", "Hangman",
@@ -316,25 +292,11 @@ Menu::Menu()
     mCategories[7].components.pushBack(new IntMenuComponent<int>(&getConfig()->mWheelDelayFrames, "wheeltime", 1, 40, true));
     mCategories[7].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mWheelActivatedPressRightStick), sStickNames, "wheelstick", true, true));
 
-    // 8: Ghost & PB
-    mCategories[8].name = "ghost";
-    mCategories[8].components.allocBuffer(4, nullptr);
-    mCategories[8].components.pushBack(new BoolMenuComponent(&getConfig()->mGhostEnabled, "ghostreplay"));
-    mCategories[8].components.pushBack(new BoolMenuComponent(&getConfig()->mPBOverlayEnabled, "pboverlay"));
-    mCategories[8].components.pushBack(new IntMenuComponent<float>(&getConfig()->mGhostAlpha, "ghostalpha", 0.05f, 1.0f, true));
-    mCategories[8].components.pushBack(new ButtonMenuComponent("resetpb", [this]() {
-        auto* tracker = ILTracker::instance();
-        if (tracker) {
-            PBStorage::instance()->resetRecord(tracker->getCurrentKingdom(), tracker->getCurrentSegment());
-        }
-    }, true));
-
-    mComponents.allocBuffer(6, nullptr);
+    mComponents.allocBuffer(4, nullptr);
     mComponents.pushBack(new QuickActionMenu(*this));
     mComponents.pushBack(new Timer);
     mComponents.pushBack(new MofumofuPatternUpdateNotification);
     mComponents.pushBack(new InputDisplay);
-    mComponents.pushBack(new PBOverlay);
 }
 
 void Menu::update(al::Scene* scene)
@@ -346,8 +308,33 @@ void Menu::update(al::Scene* scene)
     }
     mTimer++;
 
-    ILTracker::instance()->update(scene);
-    GhostManager::instance()->update(scene);
+    if (scene && scene->mIsAlive) {
+        StageScene* stageScene = static_cast<StageScene*>(scene);
+        if (stageScene->mHolder) {
+            static const char* (*sGetCurrentStageName)(GameDataHolderAccessor) = nullptr;
+            static const char* (*sTryGetCurrentStageNameHolder)(GameDataHolder*) = nullptr;
+            if (!sGetCurrentStageName && !sTryGetCurrentStageNameHolder) {
+                nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetCurrentStageName), "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor");
+                nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sTryGetCurrentStageNameHolder), "_ZNK14GameDataHolder21tryGetCurrentStageNameEv");
+            }
+            const char* curStage = nullptr;
+            if (sGetCurrentStageName) {
+                curStage = sGetCurrentStageName(GameDataHolderAccessor(stageScene->mHolder));
+            } else if (sTryGetCurrentStageNameHolder) {
+                curStage = sTryGetCurrentStageNameHolder(stageScene->mHolder);
+            }
+            if (curStage && curStage[0] != '\0') {
+                if (strncmp(mLastStageName, curStage, sizeof(mLastStageName)) != 0) {
+                    strncpy(mLastStageName, curStage, sizeof(mLastStageName) - 1);
+                    mLastStageName[sizeof(mLastStageName) - 1] = '\0';
+                    auto* cfg = getConfig();
+                    if (cfg && cfg->mTimerAutoKingdom && Timer::sInstance) {
+                        Timer::sInstance->start();
+                    }
+                }
+            }
+        }
+    }
 
     for (int i = 0; i < mComponents.size(); i++) {
         IComponent* component = mComponents[i];

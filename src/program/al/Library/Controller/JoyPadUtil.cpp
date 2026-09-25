@@ -4,7 +4,12 @@ namespace al {
 
 sead::ControllerBase* getController_(s32 port)
 {
-    return al::isValidReplayController(port) ? getReplayController(port) : sead::ControllerMgr::instance()->getController(port);
+    if (al::isValidReplayController(port))
+        return getReplayController(port);
+    auto* mgr = sead::ControllerMgr::instance();
+    if (!mgr)
+        return nullptr;
+    return mgr->getController(port);
 }
 
 sead::ControllerBase* getController(s32 port)
@@ -18,7 +23,8 @@ sead::ControllerBase* getController(s32 port)
 
 bool isPadTrigger(s32 port, s32 button)
 {
-    return getController(port)->isTrig(button);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isTrig(button) : false;
 }
 
 bool isPadTrigger1(s32 port)
@@ -88,7 +94,8 @@ bool isPadTriggerPressRightStick(s32 port)
 
 bool isPadHold(s32 port, s32 button)
 {
-    return getController(port)->isHold(button);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isHold(button) : false;
 }
 
 bool isPadHoldA(s32 port)
@@ -149,19 +156,23 @@ bool isPadHoldRight(s32 port)
 }
 bool isPadHoldLeftUp(s32 port)
 {
-    return getController(port)->isHoldAll(0x50000);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isHoldAll(0x50000) : false;
 }
 bool isPadHoldLeftDown(s32 port)
 {
-    return getController(port)->isHoldAll(0x60000);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isHoldAll(0x60000) : false;
 }
 bool isPadHoldRightUp(s32 port)
 {
-    return getController(port)->isHoldAll(0x90000);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isHoldAll(0x90000) : false;
 }
 bool isPadHoldRightDown(s32 port)
 {
-    return getController(port)->isHoldAll(0xA0000);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->isHoldAll(0xA0000) : false;
 }
 bool isPadHoldHome(s32 port)
 {
@@ -242,7 +253,9 @@ bool isPadHoldPressRightStick(s32 port)
 
 const sead::Vector2f& getRightStick(s32 port)
 {
-    return getController(port)->getRightStick();
+    static const sead::Vector2f sZero(0.0f, 0.0f);
+    auto* ctrl = getController(port);
+    return ctrl ? ctrl->getRightStick() : sZero;
 }
 
 } // namespace al

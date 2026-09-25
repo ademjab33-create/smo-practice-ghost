@@ -1,4 +1,5 @@
 #include "pe/Menu/UserConfig.h"
+#include <cstdlib>
 #include "helpers/fsHelper.h"
 #include "pe/Menu/Menu.h"
 
@@ -24,9 +25,12 @@ void loadConfig()
     FsHelper::LoadData data;
     data.path = sUserConfigPath;
     FsHelper::loadFileFromPath(data);
-    if (data.buffer != nullptr && data.bufSize == sizeof(UserConfig)) {
-        UserConfig* configData = reinterpret_cast<UserConfig*>(data.buffer);
-        *sConfig = *configData;
+    if (data.buffer != nullptr) {
+        if (data.bufSize == sizeof(UserConfig)) {
+            UserConfig* configData = reinterpret_cast<UserConfig*>(data.buffer);
+            *sConfig = *configData;
+        }
+        free(data.buffer);
     }
 }
 

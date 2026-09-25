@@ -33,6 +33,7 @@ void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::Sequenc
     pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 8, "MenuHeap", al::getSequenceHeap(), 8, sead::ExpHeap::cHeapDirection_Forward, false);
 
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+    pe::loadConfig();
     pe::PBStorage::createInstance(nullptr);
     pe::PBStorage::instance()->init();
     pe::ILTracker::createInstance(nullptr);
@@ -80,21 +81,10 @@ extern "C" void exl_main(void* x0, void* x1)
 {
     exl::hook::Initialize();
 
-    if (!pe::getConfig()) {
-        pe::getConfig() = new pe::UserConfig();
-    }
-
-#if GAME_VERSION == 100
-    FileDeviceMgrCtor::InstallAtSymbol("_ZN4sead13FileDeviceMgrC2Ev");
-    HakoniwaSequenceInit::InstallAtSymbol("_ZN16HakoniwaSequence4initERKN2al16SequenceInitInfoE");
-    HakoniwaSequenceUpdate::InstallAtSymbol("_ZN16HakoniwaSequence6updateEv");
-    SceneEndInitHook::InstallAtSymbol("_ZN2al5Scene7endInitERKNS_13ActorInitInfoE");
-#else
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
     HakoniwaSequenceUpdate::InstallAtOffset(pe::offsets::HakoniwaSequenceUpdate);
     SceneEndInitHook::InstallAtOffset(pe::offsets::SceneEndInitHookLocation);
-#endif
 
     pe::initMenuDPadDisableHooks();
     pe::installPracticeHacks();

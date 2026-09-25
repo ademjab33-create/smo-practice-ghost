@@ -112,13 +112,6 @@ struct UserConfig {
     int mWheelDelayFrames = 1;
     bool mWheelActivatedPressRightStick = false;
 
-    // Ghost
-    bool mGhostEnabled = true;
-    bool mPBOverlayEnabled = true;
-    float mGhostAlpha = 0.45f;
-    ImVec2 mPBOverlayPos = ImVec2(1200.f, 40.f);
-    float mPBOverlayFontSize = 22.0f;
-
     struct MofumofuPatternEntry {
         const char* typeStr;
         int target;

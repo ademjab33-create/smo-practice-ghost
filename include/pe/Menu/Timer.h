@@ -30,6 +30,7 @@ public:
     void reset();
     void event(TimerHookType type);
     void showSplit();
+    bool isRunning() const { return mIsRunning; }
 
     void draw() override;
 

@@ -169,25 +169,16 @@ Menu::Menu()
     mCategories[5].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mWheelActivatedPressRightStick), stickNames, "wheelstick", true, true));
 
     mCategories[6].name = "ghost";
-    mCategories[6].components.allocBuffer(4, nullptr);
+    mCategories[6].components.allocBuffer(3, nullptr);
     mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mGhostEnabled, "ghostreplay"));
     mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mPBOverlayEnabled, "pboverlay"));
     mCategories[6].components.pushBack(new IntMenuComponent<float>(&getConfig()->mGhostAlpha, "ghostalpha", 0.05f, 1.0f, true));
-    mCategories[6].components.pushBack(new ButtonMenuComponent(
-        "resetpb", [this]() {
-            auto* tracker = ILTracker::instance();
-            if (tracker) {
-                PBStorage::instance()->resetRecord(tracker->getCurrentKingdom(), tracker->getCurrentSegment());
-            }
-        },
-        true));
 
-    mComponents.allocBuffer(6, nullptr);
+    mComponents.allocBuffer(4, nullptr);
     mComponents.pushBack(new QuickActionMenu(*this));
     mComponents.pushBack(new Timer);
     mComponents.pushBack(new MofumofuPatternUpdateNotification);
     mComponents.pushBack(new InputDisplay);
-    mComponents.pushBack(new PBOverlay);
 }
 
 void Menu::update(al::Scene* scene)
@@ -219,6 +210,10 @@ void Menu::draw()
         IComponent* component = mComponents[i];
         if (component)
             component->draw();
+    }
+
+    if (getConfig()->mPBOverlayEnabled) {
+        PBOverlay::draw();
     }
 
     if (!mIsEnabled) {

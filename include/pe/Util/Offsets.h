@@ -38,7 +38,7 @@ namespace offsets {
     const uintptr_t FileDeviceMgrCtorHookLocation = 0x00943d60;
     const uintptr_t HakoniwaSequenceInitHookLocation = 0x004b4230;
     const uintptr_t HakoniwaSequenceUpdate = 0x004b4e90;
-    const uintptr_t SceneEndInitHookLocation = 0x004b4e90;
+    const uintptr_t SceneEndInitHookLocation = 0x009cea7c;
 
     const uintptr_t IsPadTriggerDpadDown = 0x005d0200;
     const uintptr_t IsPadTriggerDpadLeft = 0x005d02b0;

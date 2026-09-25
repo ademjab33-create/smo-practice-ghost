@@ -42,7 +42,7 @@ void PBOverlay::formatTime(s64 ticks, char* outBuffer, size_t bufferSize)
     s64 seconds = totalSeconds % 60;
     s64 millis = (ticks % freq) * 1000 / freq;
 
-    std::snprintf(outBuffer, bufferSize, "%02lld:%02lld.%03lld", minutes, seconds, millis);
+    std::snprintf(outBuffer, bufferSize, "%02ld:%02ld.%03ld", (long)minutes, (long)seconds, (long)millis);
 }
 
 void PBOverlay::draw()
@@ -95,11 +95,11 @@ void PBOverlay::draw()
 
             if (deltaTicks < 0) {
                 // En avance sur le PB : Vert
-                std::snprintf(deltaBuf, sizeof(deltaBuf), "Δ -%02lld.%03lld", (-deltaSec), deltaMillis);
+                std::snprintf(deltaBuf, sizeof(deltaBuf), "Δ -%02ld.%03ld", (long)(-deltaSec), (long)deltaMillis);
                 deltaColor = IM_COL32(50, 255, 50, 255);
             } else {
                 // En retard sur le PB : Rouge
-                std::snprintf(deltaBuf, sizeof(deltaBuf), "Δ +%02lld.%03lld", deltaSec, deltaMillis);
+                std::snprintf(deltaBuf, sizeof(deltaBuf), "Δ +%02ld.%03ld", (long)deltaSec, (long)deltaMillis);
                 deltaColor = IM_COL32(255, 60, 60, 255);
             }
         }

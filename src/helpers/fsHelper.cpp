@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "fsHelper.h"
 #include "diag/assert.hpp"
 #include "nn/fs.h"

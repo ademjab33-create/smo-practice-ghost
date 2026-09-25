@@ -12,9 +12,6 @@
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Offsets.h"
 #include "program/imgui_nvn.h"
-#include "pe/Ghost/GhostManager.h"
-#include "pe/Ghost/ILTracker.h"
-#include "pe/Ghost/PBStorage.h"
 #include <sead/filedevice/seadFileDeviceMgr.h>
 
 HOOK_DEFINE_TRAMPOLINE(FileDeviceMgrCtor) { static void Callback(sead::FileDeviceMgr * thisPtr); };
@@ -33,11 +30,6 @@ void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::Sequenc
     pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 8, "MenuHeap", al::getSequenceHeap(), 8, sead::ExpHeap::cHeapDirection_Forward, false);
 
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
-    pe::PBStorage::createInstance(nullptr);
-    pe::PBStorage::instance()->init();
-    pe::ILTracker::createInstance(nullptr);
-    pe::ILTracker::instance()->init();
-    pe::GhostManager::createInstance(nullptr);
     pe::Menu::createInstance(nullptr);
 }
 
@@ -54,17 +46,6 @@ void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr)
     }
 }
 
-HOOK_DEFINE_TRAMPOLINE(SceneEndInitHook) {
-    static void Callback(al::Scene* scene, const al::ActorInitInfo& info) {
-        Orig(scene, info);
-        sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
-        auto* ghostMgr = pe::GhostManager::instance();
-        if (ghostMgr) {
-            ghostMgr->init(info);
-        }
-    }
-};
-
 static void drawDbgGui()
 {
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
@@ -77,13 +58,9 @@ extern "C" void exl_main(void* x0, void* x1)
 {
     exl::hook::Initialize();
 
-    using Patcher = exl::patch::CodePatcher;
-    using namespace exl::patch::inst;
-
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
     HakoniwaSequenceUpdate::InstallAtOffset(pe::offsets::HakoniwaSequenceUpdate);
-    SceneEndInitHook::InstallAtSymbol("_ZN2al5Scene7endInitERKNS_13ActorInitInfoE");
 
     pe::initMenuDPadDisableHooks();
     pe::installPracticeHacks();

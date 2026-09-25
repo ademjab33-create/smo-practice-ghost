@@ -7,7 +7,7 @@
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Localization.h"
 #include <cstdio>
-#include <math.h>
+#include <cmath>
 
 namespace pe {
 

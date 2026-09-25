@@ -4,6 +4,7 @@
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
 #include "al/Library/LiveActor/ActorModelFunction.h"
+#include <prim/seadSafeString.h>
 namespace al {
     class ActorInitInfo;
     void initActorWithArchiveName(al::LiveActor* actor, const al::ActorInitInfo& initInfo, const sead::SafeString& archiveName, const char* suffix);
@@ -122,11 +123,6 @@ void GhostPuppetActor::applyReplayFrame(const ReplayFrame& frame)
     // Position et orientation Mario
     al::setTrans(this, frame.mPlayerTrans);
     al::setQuat(this, frame.mPlayerQuat);
-
-    // Blending squelettique
-    for (int i = 0; i < 6; i++) {
-        al::setSklAnimBlendWeight(this, frame.mBlendWeights[i], i);
-    }
 
     // Position et orientation Cappy
     if (mCapActor) {

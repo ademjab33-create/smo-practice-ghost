@@ -3,8 +3,11 @@
 #include "al/Library/LiveActor/ActorClippingFunction.h"
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
-#include "al/Library/LiveActor/ActorInitFunction.h"
 #include "al/Library/LiveActor/ActorModelFunction.h"
+namespace al {
+    class ActorInitInfo;
+    void initActorWithArchiveName(al::LiveActor* actor, const al::ActorInitInfo& initInfo, const sead::SafeString& archiveName, const char* suffix);
+}
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
 #include "al/Library/LiveActor/ActorSensorUtil.h"
 #include "al/Library/LiveActor/SubActorKeeper.h"

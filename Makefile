@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 BUILD_COUNTER_FILE := .build_counter
-GAME_VERSION := 100
+GAME_VERSION := 130
 
 all: increment_counter
 	cmake --toolchain=cmake/toolchain.cmake -S . -B build -DGAME_VERSION=$(GAME_VERSION) && $(MAKE) -C build

@@ -124,7 +124,7 @@ void PBStorage::resetRecord(KingdomId kingdom, SegmentId segment)
         char ghostPath[256];
         getGhostFilePath(kingdom, segment, ghostPath, sizeof(ghostPath));
         if (FsHelper::isFileExist(ghostPath)) {
-            nn::fs::DeleteFile(ghostPath);
+            remove(ghostPath);
         }
 
         save();
@@ -134,7 +134,7 @@ void PBStorage::resetRecord(KingdomId kingdom, SegmentId segment)
 void PBStorage::getGhostFilePath(KingdomId kingdom, SegmentId segment, char* outBuffer, size_t bufferSize) const
 {
     if (!outBuffer || bufferSize == 0) return;
-    std::snprintf(outBuffer, bufferSize, "%s/%016llX/k%d_s%d.bin", GHOSTS_DIR, mProfileId, static_cast<int>(kingdom), static_cast<int>(segment));
+    std::snprintf(outBuffer, bufferSize, "%s/%016lX/k%d_s%d.bin", GHOSTS_DIR, (unsigned long)mProfileId, static_cast<int>(kingdom), static_cast<int>(segment));
 }
 
 bool PBStorage::save()

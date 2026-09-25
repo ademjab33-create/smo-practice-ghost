@@ -316,24 +316,11 @@ void Menu::updateInput()
     }
 
     if (al::isPadHoldR(-1)) {
-        if (al::isPadTriggerUp(-1)) {
-            auto* tracker = ILTracker::instance();
-            auto* gm = GhostManager::instance();
-            if (tracker && gm) {
-                gm->onRunStart(tracker->getCurrentKingdom(), tracker->getCurrentSegment(), tracker->getCurrentSegmentName());
-            }
-        }
-        if (al::isPadTriggerDown(-1)) {
-            auto* gm = GhostManager::instance();
-            if (gm) {
-                gm->onRunEnd(nn::os::GetSystemTick(), 0);
-            }
-        }
-        if (al::isPadTriggerLeft(-1)) {
-            auto* gm = GhostManager::instance();
-            if (gm) {
-                gm->onRunReset();
-            }
+        auto* gm = GhostManager::instance();
+        if (gm) {
+            if (al::isPadTriggerUp(-1))   gm->startRun();
+            if (al::isPadTriggerDown(-1)) gm->stopRun();
+            if (al::isPadTriggerLeft(-1)) gm->resetRun();
         }
     }
 

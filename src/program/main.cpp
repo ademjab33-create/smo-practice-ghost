@@ -80,6 +80,10 @@ extern "C" void exl_main(void* x0, void* x1)
 {
     exl::hook::Initialize();
 
+    if (!pe::getConfig()) {
+        pe::getConfig() = new pe::UserConfig();
+    }
+
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
     HakoniwaSequenceUpdate::InstallAtOffset(pe::offsets::HakoniwaSequenceUpdate);

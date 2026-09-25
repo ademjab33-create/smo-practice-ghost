@@ -1,159 +1,217 @@
 #include "pe/Ghost/GhostManager.h"
-#include "pe/Ghost/GhostPuppetActor.h"
-#include "pe/Ghost/ILTracker.h"
-#include "pe/Ghost/PBStorage.h"
-#include "al/Library/LiveActor/ActorPoseKeeper.h"
+#include "Player/PlayerActorHakoniwa.h"
+#include "al/Library/Controller/JoyPadUtil.h"
+#include "al/Library/LiveActor/ActorActionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
+#include "al/Library/LiveActor/ActorPoseKeeper.h"
+#include "al/Library/Scene/Scene.h"
+#include "pe/Ghost/PBStorage.h"
+#include "pe/Menu/Menu.h"
 #include "rs/Util/PlayerUtil.h"
-#include "nn/os.h"
-#include "nn/fs.h"
 #include <cstring>
 
 namespace pe {
 
 SEAD_SINGLETON_DISPOSER_IMPL(GhostManager);
 
-GhostManager::GhostManager() {
-    mRecordBuf = new GhostFrame[kMaxGhostFrames];
-    mPlayBuf = new GhostFrame[kMaxGhostFrames];
+GhostManager::GhostManager()
+{
+    mIsEnabled = true;
+    mState = GhostState::Idle;
+    mCurrentStep = 0;
+    mIsNewPBNotification = false;
 }
 
-GhostManager::~GhostManager() {
-    delete[] mRecordBuf;
-    delete[] mPlayBuf;
-}
-
-void GhostManager::initPuppet(const al::ActorInitInfo& info) {
-    if (!mPuppet) {
-        mPuppet = new GhostPuppetActor("GhostPuppet");
-        mPuppet->init(info);
+GhostManager::~GhostManager()
+{
+    if (mGhostPuppet) {
+        delete mGhostPuppet;
+        mGhostPuppet = nullptr;
     }
 }
 
-void GhostManager::startRun() {
-    mStartTick = nn::os::GetSystemTick().m_tick;
-    mEndTick = mStartTick;
-    mElapsedFrames = 0;
-    mRecordCount = 0;
-    mIsRunActive = true;
-    mIsNewPB = false;
-    mPlayStep = 0;
-
-    loadGhostData();
-
-    if (mPuppet && mPlayCount > 0) {
-        mPuppet->makeActorAlive();
+void GhostManager::init(const al::ActorInitInfo& info)
+{
+    if (!mGhostPuppet) {
+        mGhostPuppet = new GhostPuppetActor("GhostReplayMario");
+        mGhostPuppet->init(info);
     }
 }
 
-void GhostManager::stopRun() {
-    if (!mIsRunActive) return;
-    mEndTick = nn::os::GetSystemTick().m_tick;
-    mIsRunActive = false;
-
-    if (mPuppet && al::isAlive(mPuppet)) {
-        mPuppet->makeActorDead();
-    }
-
-    auto* tracker = ILTracker::instance();
-    auto* storage = PBStorage::instance();
-    if (tracker && storage) {
-        bool newPB = false;
-        storage->updateRecordIfBetter(
-            tracker->getCurrentKingdom(), tracker->getCurrentSegment(),
-            tracker->getCurrentSegmentName(), getElapsedTicks(), mElapsedFrames, newPB);
-        if (newPB) {
-            mIsNewPB = true;
-            saveGhostData();
-        }
+void GhostManager::setGhostEnabled(bool enabled)
+{
+    mIsEnabled = enabled;
+    if (!mIsEnabled && mGhostPuppet) {
+        mGhostPuppet->makeActorDead();
     }
 }
 
-void GhostManager::resetRun() {
-    mIsRunActive = false;
-    mStartTick = 0; mEndTick = 0; mElapsedFrames = 0;
-    mRecordCount = 0; mPlayStep = 0;
-    mIsNewPB = false;
-    if (mPuppet && al::isAlive(mPuppet)) {
-        mPuppet->makeActorDead();
+float GhostManager::getGhostAlpha() const
+{
+    if (mGhostPuppet) {
+        return mGhostPuppet->getGhostAlpha();
+    }
+    return 0.45f;
+}
+
+void GhostManager::setGhostAlpha(float alpha)
+{
+    if (mGhostPuppet) {
+        mGhostPuppet->setGhostAlpha(alpha);
     }
 }
 
-void GhostManager::update(al::Scene* scene) {
-    if (!mIsRunActive) return;
-    mElapsedFrames++;
-    recordFrame(scene);
-    playbackFrame();
-}
+void GhostManager::onRunStart(KingdomId kingdom, SegmentId segment, const char* segmentName)
+{
+    mActiveKingdom = kingdom;
+    mActiveSegment = segment;
+    if (segmentName) {
+        std::strncpy(mActiveSegmentName, segmentName, sizeof(mActiveSegmentName) - 1);
+    }
 
-void GhostManager::recordFrame(al::Scene* scene) {
-    if (!scene || mRecordCount >= kMaxGhostFrames) return;
-    PlayerActorBase* player = rs::getPlayerActor(scene);
-    if (!player) return;
-    sead::Vector3f pos = al::getTrans(player);
-    mRecordBuf[mRecordCount].x = pos.x;
-    mRecordBuf[mRecordCount].y = pos.y;
-    mRecordBuf[mRecordCount].z = pos.z;
-    mRecordCount++;
-}
+    mCurrentStep = 0;
+    mIsNewPBNotification = false;
 
-void GhostManager::playbackFrame() {
-    if (!mPuppet || mPlayCount <= 0) return;
-    if (mPlayStep < mPlayCount) {
-        if (al::isDead(mPuppet)) mPuppet->makeActorAlive();
-        sead::Vector3f pos(mPlayBuf[mPlayStep].x, mPlayBuf[mPlayStep].y, mPlayBuf[mPlayStep].z);
-        mPuppet->applyPosition(pos);
-        mPlayStep++;
+    // Réinitialiser le buffer de la nouvelle tentative
+    mCurrentRunData.reset();
+    mCurrentRunData.getHeader().mKingdomId = kingdom;
+    mCurrentRunData.getHeader().mSegmentId = segment;
+    if (segmentName) {
+        std::strncpy(mCurrentRunData.getHeader().mSegmentName, segmentName, sizeof(mCurrentRunData.getHeader().mSegmentName) - 1);
+    }
+
+    // Charger le replay du PB existant s'il existe sur la carte SD
+    char ghostPath[256];
+    PBStorage::instance()->getGhostFilePath(kingdom, segment, ghostPath, sizeof(ghostPath));
+    bool hasPBReplay = mLoadedPBData.loadFromFile(ghostPath, getMenuHeap());
+
+    if (mIsEnabled && hasPBReplay && mGhostPuppet) {
+        mGhostPuppet->makeActorAlive();
+        mState = GhostState::RecordingAndPlaying;
+
+        // Positionner le fantôme sur la première frame
+        updateGhostPlayback(0);
     } else {
-        if (al::isAlive(mPuppet)) mPuppet->makeActorDead();
+        if (mGhostPuppet) {
+            mGhostPuppet->makeActorDead();
+        }
+        mState = GhostState::Recording;
     }
 }
 
-void GhostManager::saveGhostData() {
-    auto* tracker = ILTracker::instance();
-    if (!tracker || mRecordCount <= 0) return;
+void GhostManager::update(al::Scene* scene)
+{
+    if (mState == GhostState::Idle || !scene || !scene->mIsAlive) {
+        return;
+    }
 
-    char path[256];
-    auto* storage = PBStorage::instance();
-    if (storage) {
-        storage->getGhostFilePath(tracker->getCurrentKingdom(), tracker->getCurrentSegment(), path, sizeof(path));
-        nn::fs::FileHandle handle;
-        s64 size = sizeof(int) + mRecordCount * sizeof(GhostFrame);
-        nn::fs::CreateFile(path, size);
-        if (nn::fs::OpenFile(&handle, path, nn::fs::OpenMode_Write).IsSuccess()) {
-            nn::fs::SetFileSize(handle, size);
-            nn::fs::WriteFile(handle, 0, &mRecordCount, sizeof(int), nn::fs::WriteOption());
-            nn::fs::WriteFile(handle, sizeof(int), mRecordBuf, mRecordCount * sizeof(GhostFrame), nn::fs::WriteOption());
-            nn::fs::FlushFile(handle);
-            nn::fs::CloseFile(handle);
+    // 1. Enregistrement de la frame actuelle du joueur
+    if (mState == GhostState::Recording || mState == GhostState::RecordingAndPlaying) {
+        recordCurrentPlayerFrame(scene, mCurrentStep);
+    }
+
+    // 2. Relecture et synchronisation de la frame du fantôme
+    if (mState == GhostState::RecordingAndPlaying || mState == GhostState::Playing) {
+        updateGhostPlayback(mCurrentStep);
+    }
+
+    mCurrentStep++;
+}
+
+void GhostManager::recordCurrentPlayerFrame(al::Scene* scene, u32 step)
+{
+    PlayerActorHakoniwa* player = reinterpret_cast<PlayerActorHakoniwa*>(rs::getPlayerActor(scene));
+    if (!player) return;
+
+    ReplayFrame frame;
+    frame.mStep = step;
+    frame.mPlayerTrans = al::getTrans(player);
+    frame.mPlayerQuat = al::getQuat(player);
+
+    // Récupération de Cappy
+    if (player->mHackCap) {
+        frame.mCapTrans = al::getTrans(player->mHackCap);
+        frame.mCapQuat = al::getQuat(player->mHackCap);
+        if (player->mHackCap->mJointKeeper) {
+            frame.mCapJoint = player->mHackCap->mJointKeeper->mJointRot;
+            frame.mCapSkew = player->mHackCap->mJointKeeper->mSkew;
+        }
+        frame.mIsCapVisible = al::isAlive(player->mHackCap);
+    }
+
+    // Récupération des poids de squelette
+    if (player->mPlayerAnimator) {
+        for (int i = 0; i < 6; i++) {
+            frame.mBlendWeights[i] = player->mPlayerAnimator->getBlendWeight(i);
         }
     }
+
+    // Mode 2D
+    frame.mIs2D = rs::isPlayer2D(player);
+
+    // Inputs manette
+    frame.mButtons = al::getPadHold(-1);
+
+    mCurrentRunData.appendFrame(frame);
 }
 
-void GhostManager::loadGhostData() {
-    mPlayCount = 0;
-    mPlayStep = 0;
-    auto* tracker = ILTracker::instance();
-    auto* storage = PBStorage::instance();
-    if (!tracker || !storage) return;
+void GhostManager::updateGhostPlayback(u32 step)
+{
+    if (!mGhostPuppet || !mIsEnabled) return;
 
-    char path[256];
-    storage->getGhostFilePath(tracker->getCurrentKingdom(), tracker->getCurrentSegment(), path, sizeof(path));
-    nn::fs::FileHandle handle;
-    if (nn::fs::OpenFile(&handle, path, nn::fs::OpenMode_Read).IsSuccess()) {
-        int count = 0;
-        nn::fs::ReadFile(handle, 0, &count, sizeof(int));
-        if (count > 0 && count <= kMaxGhostFrames) {
-            nn::fs::ReadFile(handle, sizeof(int), mPlayBuf, count * sizeof(GhostFrame));
-            mPlayCount = count;
+    if (step < mLoadedPBData.getFrameCount()) {
+        const ReplayFrame* frame = mLoadedPBData.getFrame(step);
+        if (frame) {
+            if (al::isDead(mGhostPuppet)) {
+                mGhostPuppet->makeActorAlive();
+            }
+            mGhostPuppet->applyReplayFrame(*frame);
         }
-        nn::fs::CloseFile(handle);
+    } else {
+        // Fin du replay du fantôme : le joueur est en retard ou le fantôme a déjà fini
+        mGhostPuppet->makeActorDead();
     }
 }
 
-s64 GhostManager::getElapsedTicks() const {
-    if (mIsRunActive) return nn::os::GetSystemTick().m_tick - mStartTick;
-    return mEndTick - mStartTick;
+void GhostManager::onRunEnd(s64 elapsedTicks, u32 totalFrames)
+{
+    if (mState == GhostState::Idle) return;
+
+    // Arrêter le fantôme
+    if (mGhostPuppet) {
+        mGhostPuppet->makeActorDead();
+    }
+
+    mCurrentRunData.getHeader().mTotalTicks = elapsedTicks;
+    mCurrentRunData.getHeader().mTotalFrames = totalFrames;
+
+    // Comparer et mettre à jour le PB dans PBStorage
+    bool isNewPB = false;
+    PBStorage::instance()->updateRecordIfBetter(mActiveKingdom, mActiveSegment, mActiveSegmentName, elapsedTicks, totalFrames, isNewPB);
+
+    if (isNewPB) {
+        mIsNewPBNotification = true;
+
+        // Sauvegarder la nouvelle tentative comme nouveau fichier fantôme PB
+        char ghostPath[256];
+        PBStorage::instance()->getGhostFilePath(mActiveKingdom, mActiveSegment, ghostPath, sizeof(ghostPath));
+        mCurrentRunData.saveToFile(ghostPath);
+
+        // Recharger immédiatement en tant que nouveau PB actif
+        mLoadedPBData.loadFromFile(ghostPath, getMenuHeap());
+    }
+
+    mState = GhostState::Idle;
+}
+
+void GhostManager::onRunReset()
+{
+    if (mGhostPuppet) {
+        mGhostPuppet->makeActorDead();
+    }
+    mCurrentRunData.reset();
+    mState = GhostState::Idle;
+    mCurrentStep = 0;
 }
 
 } // namespace pe

@@ -33,6 +33,10 @@
 #include "pe/Menu/Timer.h"
 #include "pe/Menu/UserConfig.h"
 #include "pe/Menu/Vector2MenuComponent.h"
+#include "pe/Ghost/GhostManager.h"
+#include "pe/Ghost/ILTracker.h"
+#include "pe/Ghost/PBOverlay.h"
+#include "pe/Ghost/PBStorage.h"
 #include "pe/Util/Localization.h"
 #include "pe/Util/Nerve.h"
 #include "pe/Util/Offsets.h"
@@ -164,11 +168,26 @@ Menu::Menu()
     static constexpr const char* stickNames[] { "left", "right" };
     mCategories[5].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mWheelActivatedPressRightStick), stickNames, "wheelstick", true, true));
 
-    mComponents.allocBuffer(5, nullptr);
+    mCategories[6].name = "ghost";
+    mCategories[6].components.allocBuffer(4, nullptr);
+    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mGhostEnabled, "ghostreplay"));
+    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mPBOverlayEnabled, "pboverlay"));
+    mCategories[6].components.pushBack(new IntMenuComponent<float>(&getConfig()->mGhostAlpha, "ghostalpha", 0.05f, 1.0f, true));
+    mCategories[6].components.pushBack(new ButtonMenuComponent(
+        "resetpb", [this]() {
+            auto* tracker = ILTracker::instance();
+            if (tracker) {
+                PBStorage::instance()->resetRecord(tracker->getCurrentKingdom(), tracker->getCurrentSegment());
+            }
+        },
+        true));
+
+    mComponents.allocBuffer(6, nullptr);
     mComponents.pushBack(new QuickActionMenu(*this));
     mComponents.pushBack(new Timer);
     mComponents.pushBack(new MofumofuPatternUpdateNotification);
     mComponents.pushBack(new InputDisplay);
+    mComponents.pushBack(new PBOverlay);
 }
 
 void Menu::update(al::Scene* scene)
@@ -179,6 +198,9 @@ void Menu::update(al::Scene* scene)
         pe::saveConfig();
     }
     mTimer++;
+
+    ILTracker::instance()->update(scene);
+    GhostManager::instance()->update(scene);
 
     for (int i = 0; i < mComponents.size(); i++) {
         IComponent* component = mComponents[i];
@@ -293,6 +315,28 @@ void Menu::updateInput()
         return;
     }
 
+    if (al::isPadHoldR(-1)) {
+        if (al::isPadTriggerUp(-1)) {
+            auto* tracker = ILTracker::instance();
+            auto* gm = GhostManager::instance();
+            if (tracker && gm) {
+                gm->onRunStart(tracker->getCurrentKingdom(), tracker->getCurrentSegment(), tracker->getCurrentSegmentName());
+            }
+        }
+        if (al::isPadTriggerDown(-1)) {
+            auto* gm = GhostManager::instance();
+            if (gm) {
+                gm->onRunEnd(nn::os::GetSystemTick(), 0);
+            }
+        }
+        if (al::isPadTriggerLeft(-1)) {
+            auto* gm = GhostManager::instance();
+            if (gm) {
+                gm->onRunReset();
+            }
+        }
+    }
+
     if (!mIsExpandedCurrentCategory) {
         if (al::isPadTriggerDown(-1)) {
             mCurrentCategory++;
@@ -372,10 +416,14 @@ void Menu::callAction(ActionType type)
 {
     if (mScene && mScene->mIsAlive) {
         const al::Nerve* nrv = mScene->getNerveKeeper()->getCurrentNerve();
+        #if GAME_VERSION == 130
         bool allowedNerve = (nrv == util::getNerveAt(offsets::StageSceneNrvPlay) || nrv == util::getNerveAt(offsets::StageSceneNrvShineGet));
         uintptr_t typeInfo = *reinterpret_cast<uintptr_t*>(pe::util::getVft(nrv) - 8);
         const char** typeName = reinterpret_cast<const char**>(typeInfo + 8);
         if (strstr(*typeName, "StageSceneNrvDemo") or allowedNerve) {
+#else
+        if (true) {
+#endif
             PlayerActorBase* playerBase = reinterpret_cast<PlayerActorBase*>(rs::getPlayerActor(mScene));
             switch (type) {
             case ActionType::KillScene: {

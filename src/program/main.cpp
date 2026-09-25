@@ -33,7 +33,6 @@ void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::Sequenc
     pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 8, "MenuHeap", al::getSequenceHeap(), 8, sead::ExpHeap::cHeapDirection_Forward, false);
 
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
-    pe::loadConfig();
     pe::PBStorage::createInstance(nullptr);
     pe::PBStorage::instance()->init();
     pe::ILTracker::createInstance(nullptr);
@@ -47,11 +46,10 @@ void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr)
 {
     Orig(thisPtr);
 
-    if (!pe::getMenuHeap()) return;
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
     auto* menu = pe::Menu::instance();
     if (menu) {
-        al::Scene* scene = reinterpret_cast<al::Sequence*>(thisPtr)->getCurrentScene();
+        al::Scene* scene = *reinterpret_cast<al::Scene**>(reinterpret_cast<u8*>(thisPtr) + 0xb0);
         menu->update(scene);
     }
 }
@@ -59,18 +57,16 @@ void HakoniwaSequenceUpdate::Callback(HakoniwaSequence* thisPtr)
 HOOK_DEFINE_TRAMPOLINE(SceneEndInitHook) {
     static void Callback(al::Scene* scene, const al::ActorInitInfo& info) {
         Orig(scene, info);
-        if (!pe::getMenuHeap()) return;
         sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
         auto* ghostMgr = pe::GhostManager::instance();
         if (ghostMgr) {
-            ghostMgr->initPuppet(info);
+            ghostMgr->init(info);
         }
     }
 };
 
 static void drawDbgGui()
 {
-    if (!pe::getMenuHeap()) return;
     sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
     auto* menu = pe::Menu::instance();
     if (menu)
@@ -81,10 +77,13 @@ extern "C" void exl_main(void* x0, void* x1)
 {
     exl::hook::Initialize();
 
+    using Patcher = exl::patch::CodePatcher;
+    using namespace exl::patch::inst;
+
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
     HakoniwaSequenceUpdate::InstallAtOffset(pe::offsets::HakoniwaSequenceUpdate);
-    SceneEndInitHook::InstallAtOffset(pe::offsets::SceneEndInitHookLocation);
+    SceneEndInitHook::InstallAtSymbol("_ZN2al5Scene7endInitERKNS_13ActorInitInfoE");
 
     pe::initMenuDPadDisableHooks();
     pe::installPracticeHacks();
@@ -95,5 +94,6 @@ extern "C" void exl_main(void* x0, void* x1)
 
 extern "C" NORETURN void exl_exception_entry()
 {
+    /* TODO: exception handling */
     EXL_ABORT(0x420);
 }

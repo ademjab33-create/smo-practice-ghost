@@ -64,8 +64,7 @@ public:
         _HOOK_STATIC_CALLBACK_ASSERT();
 
         uintptr_t address = 0;
-        nn::Result res = nn::ro::LookupSymbol(&address, sym);
-        if (res.IsSuccess() && address != 0) {
+        if (nn::ro::LookupSymbol(&address, sym).IsSuccess() && address != 0) {
             OrigRef() = hook::Hook(address, Derived::Callback, true);
         }
     }

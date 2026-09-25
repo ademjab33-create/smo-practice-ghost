@@ -5,6 +5,7 @@
 #include "nn/fs.h"
 #include "nn/init.h"
 #include "result.hpp"
+#include "util/modules.hpp"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -33,6 +34,14 @@ extern "C" void glslc_Free(void* ptr, void* user_data = nullptr)
 extern "C" void* glslc_Realloc(void* ptr, size_t size, void* user_data = nullptr)
 {
     return realloc(ptr, size);
+}
+
+namespace nn::gfx::detail {
+GlslcDll* GlslcDll::GetInstance(void) {
+    using FuncType = GlslcDll* (*)();
+    static FuncType sFunc = reinterpret_cast<FuncType>(exl::util::modules::GetTargetOffset(0x008fdaf4));
+    return sFunc();
+}
 }
 
 void NOINLINE ReadCompiledShader(GLSLCoutput* compileData)

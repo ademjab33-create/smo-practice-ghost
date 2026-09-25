@@ -218,11 +218,15 @@ bool nvnImGui::InitImGui()
         IMGUI_CHECKVERSION();
 
         ImGuiMemAllocFunc allocFunc = [](size_t size, void* user_data) {
-            return nn::init::GetAllocator()->Allocate(size);
+            auto* alloc = nn::init::GetAllocator();
+            if (alloc) return alloc->Allocate(size);
+            return malloc(size);
         };
 
         ImGuiMemFreeFunc freeFunc = [](void* ptr, void* user_data) {
-            nn::init::GetAllocator()->Free(ptr);
+            auto* alloc = nn::init::GetAllocator();
+            if (alloc) alloc->Free(ptr);
+            else free(ptr);
         };
 
         ImGui::SetAllocatorFunctions(allocFunc, freeFunc, nullptr);

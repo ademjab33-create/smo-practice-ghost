@@ -8,6 +8,8 @@
 #include "Scene/StageScene.h"
 #include "System/GameDataFunction.h"
 #include "System/GameDataHolder.h"
+#include "System/GameDataHolderWriter.h"
+#include "System/GameDataHolderAccessor.h"
 #include "al/Library/Controller/JoyPadUtil.h"
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
@@ -507,9 +509,9 @@ void Menu::drawInfoWindows()
                 al::LiveActor* actor = reinterpret_cast<al::LiveActor*>(playerBase);
                 sead::Vector3f pos = al::getTrans(actor);
                 sead::Vector3f vel = al::getVelocity(actor);
-                float hSpeed = al::calcSpeedH(actor);
-                float vSpeed = al::calcSpeedV(actor);
-                float speed = al::calcSpeed(actor);
+                float hSpeed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
+                float vSpeed = vel.y;
+                float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
                 ImGui::Text("Pos:   %.1f, %.1f, %.1f", pos.x, pos.y, pos.z);
                 ImGui::Text("Vel:   %.1f, %.1f, %.1f", vel.x, vel.y, vel.z);
                 ImGui::Text("Speed: %.2f (H: %.2f, V: %.2f)", speed, hSpeed, vSpeed);

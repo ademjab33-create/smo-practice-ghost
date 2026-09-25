@@ -42,6 +42,3 @@ _ZTVNSt3__115basic_stringbufIcNS_11char_traitsIcEENS_9allocatorIcEEEE = __main_s
 Libz_SigloMiddlewareInfo = __main_start + 0x000000000093d2d0;
 realloc = __main_start + 0x0000000000901260;
 _ZN2nn2os5MutexD2Ev = __main_start + 0x00000000008fff80;
-
-_ZN2nn4init11s_AllocatorE = __main_start + 0x014ad858;
-_ZN2nn3gfx6detail8GlslcDll11GetInstanceEv = __main_start + 0x008fdaf4;

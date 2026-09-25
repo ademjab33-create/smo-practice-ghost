@@ -9,7 +9,7 @@
 #include "pe/Menu/IComponent.h"
 #include "pe/Menu/MenuComponent.h"
 #include "pe/Menu/UserConfig.h"
-#include <sead/heap/seadDisposer.h>
+#include "heap/seadDisposer.h"
 
 namespace pe {
 
@@ -23,6 +23,7 @@ public:
     static constexpr int sCategoryFontSize = 40;
 
     Menu();
+    void update() override {}
     void update(al::Scene* scene);
     void updateInput();
     void draw() override;

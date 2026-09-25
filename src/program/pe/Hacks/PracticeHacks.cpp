@@ -368,27 +368,27 @@ void installPracticeHacks()
     strncpy((char*)a.GetRw(), "Practice Mod", 24);
 #endif
 
-    NoDamageHook.InstallAtSymbol("_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
-    WarpTextHook.InstallAtSymbol("_ZN16GameDataFunction34isAlreadyShowExplainCheckpointFlagE22GameDataHolderAccessor");
-    RefreshPurpsHook.InstallAtSymbol("_ZN16GameDataFunction16isGotCoinCollectE22GameDataHolderAccessorRKN2al13ActorInitInfoE");
-    DoorRefreshHook.InstallAtSymbol("_ZN14DoorAreaChange4initERKN2al13ActorInitInfoE");
-    SeedGrowTimeHook.InstallAtSymbol("_ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE");
-    SeedUsedHook.InstallAtSymbol("_ZN2rs20isUsedGrowFlowerSeedEPKN2al9LiveActorEPKNS0_11PlacementIdE");
-    KingdomEnterHook.InstallAtSymbol("_ZNK16GameProgressData16isAlreadyGoWorldEi");
-    DisableMoonLockHook.InstallAtSymbol("_ZNK14GameDataHolder18findUnlockShineNumEPbi");
-    AllCheckpointsHook.InstallAtSymbol("_ZN16GameDataFunction22isGotCheckpointInWorldE22GameDataHolderAccessori");
-    CloudSkipHook.InstallAtSymbol("_ZNK10StageScene16isDefeatKoopaLv1Ev");
-    SkipBroodalsHook.InstallAtSymbol("_ZNK10StageScene14isDefeatBossLv1Ev");
-    HintPhotoHook.InstallAtSymbol("_ZN2rs19checkSavedHintPhotoEPKN2al9LiveActorEPKc");
-    ToadRefreshHook.InstallAtSymbol("_ZN2rs34isOnFlagKinopioBrigadeNpcFirstTalkEPKN2al9LiveActorE");
-    WorldWarpChangeStageHook.InstallAtSymbol("_ZN14GameDataHolder31changeNextStageWithDemoWorldWarpEPKc");
-    NoclipHook.InstallAtSymbol("_ZN19PlayerActorHakoniwa8movementEv");
+    NoDamageHook::InstallAtSymbol("_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
+    WarpTextHook::InstallAtSymbol("_ZN16GameDataFunction34isAlreadyShowExplainCheckpointFlagE22GameDataHolderAccessor");
+    RefreshPurpsHook::InstallAtSymbol("_ZN16GameDataFunction16isGotCoinCollectE22GameDataHolderAccessorRKN2al13ActorInitInfoE");
+    DoorRefreshHook::InstallAtSymbol("_ZN14DoorAreaChange4initERKN2al13ActorInitInfoE");
+    SeedGrowTimeHook::InstallAtSymbol("_ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE");
+    SeedUsedHook::InstallAtSymbol("_ZN2rs20isUsedGrowFlowerSeedEPKN2al9LiveActorEPKNS0_11PlacementIdE");
+    KingdomEnterHook::InstallAtSymbol("_ZNK16GameProgressData16isAlreadyGoWorldEi");
+    DisableMoonLockHook::InstallAtSymbol("_ZNK14GameDataHolder18findUnlockShineNumEPbi");
+    AllCheckpointsHook::InstallAtSymbol("_ZN16GameDataFunction22isGotCheckpointInWorldE22GameDataHolderAccessori");
+    CloudSkipHook::InstallAtSymbol("_ZNK10StageScene16isDefeatKoopaLv1Ev");
+    SkipBroodalsHook::InstallAtSymbol("_ZNK10StageScene14isDefeatBossLv1Ev");
+    HintPhotoHook::InstallAtSymbol("_ZN2rs19checkSavedHintPhotoEPKN2al9LiveActorEPKc");
+    ToadRefreshHook::InstallAtSymbol("_ZN2rs34isOnFlagKinopioBrigadeNpcFirstTalkEPKN2al9LiveActorE");
+    WorldWarpChangeStageHook::InstallAtSymbol("_ZN14GameDataHolder31changeNextStageWithDemoWorldWarpEPKc");
+    NoclipHook::InstallAtSymbol("_ZN19PlayerActorHakoniwa8movementEv");
 
-    RsDemoHook.InstallAtSymbol("_ZN2rs11isFirstDemoEPKN2al5SceneE");
-    FirstDemoScenarioHook.InstallAtSymbol("_ZN2rs30isFirstDemoScenarioStartCameraEPKN2al9LiveActorE");
-    FirstDemoWorldHook.InstallAtSymbol("_ZN2rs27isFirstDemoWorldIntroCameraEPKN2al5SceneE");
-    FirstDemoMoonRockHook.InstallAtSymbol("_ZNK12MoonRockData38isEnableShowDemoAfterOpenMoonRockFirstEv");
-    ShowDemoHackHook.InstallAtSymbol("_ZNK18DemoStateHackFirst20isEnableShowHackDemoEv");
+    RsDemoHook::InstallAtSymbol("_ZN2rs11isFirstDemoEPKN2al5SceneE");
+    FirstDemoScenarioHook::InstallAtSymbol("_ZN2rs30isFirstDemoScenarioStartCameraEPKN2al9LiveActorE");
+    FirstDemoWorldHook::InstallAtSymbol("_ZN2rs27isFirstDemoWorldIntroCameraEPKN2al5SceneE");
+    FirstDemoMoonRockHook::InstallAtSymbol("_ZNK12MoonRockData38isEnableShowDemoAfterOpenMoonRockFirstEv");
+    ShowDemoHackHook::InstallAtSymbol("_ZNK18DemoStateHackFirst20isEnableShowHackDemoEv");
 }
 
 } // namespace pe

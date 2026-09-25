@@ -1,3 +1,4 @@
+#include <cstdlib>
 
 #include "ImguiShaderCompiler.h"
 #include "glslc/glslc.h"
@@ -23,7 +24,7 @@ extern "C" void* glslc_Alloc(size_t size, size_t alignment, void* user_data = nu
 {
     auto* alloc = nn::init::GetAllocator();
     if (alloc) return alloc->Allocate(ALIGN_UP(size, alignment));
-    return aligned_alloc(alignment, ALIGN_UP(size, alignment));
+    return malloc(ALIGN_UP(size, alignment));
 }
 
 extern "C" void glslc_Free(void* ptr, void* user_data = nullptr)

@@ -51,7 +51,7 @@ private:
     bool mIsExpandedCurrentCategory = false;
     bool mIsFocusedOnCurrentComponent = false;
 
-    Category mCategories[9];
+    Category mCategories[8];
     sead::PtrArray<IComponent> mComponents;
 
     ImVec2 mBgSize = ImVec2(0, 0);
@@ -61,6 +61,7 @@ private:
     void* mLastMapTarget = nullptr;
 
     al::Scene* mScene = nullptr;
+    char mLastStageName[64] = {0};
     int mTimer = 0;
 };
 

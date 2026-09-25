@@ -1,12 +1,24 @@
 #pragma once
-#include "pe/Ghost/GhostTypes.h"
+
+#include "basis/seadTypes.h"
+#include "imgui.h"
+#include "pe/Menu/IComponent.h"
 
 namespace pe {
 
-class PBOverlay {
+class PBOverlay : public IComponent {
 public:
-    static void draw();
-    static void formatTicks(s64 ticks, char* buf, int bufSize);
+    PBOverlay();
+    ~PBOverlay() = default;
+
+    void update() override;
+    void draw() override;
+
+    static void formatTime(s64 ticks, char* outBuffer, size_t bufferSize);
+
+private:
+    int mFrameCounter = 0;
+    int mNewPBFlashTimer = 0;
 };
 
 } // namespace pe

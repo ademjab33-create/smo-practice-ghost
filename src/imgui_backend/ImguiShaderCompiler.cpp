@@ -21,17 +21,23 @@ const char* shaderNames[] = {
 
 extern "C" void* glslc_Alloc(size_t size, size_t alignment, void* user_data = nullptr)
 {
-    return nn::init::GetAllocator()->Allocate(ALIGN_UP(size, alignment));
+    auto* alloc = nn::init::GetAllocator();
+    if (alloc) return alloc->Allocate(ALIGN_UP(size, alignment));
+    return aligned_alloc(alignment, ALIGN_UP(size, alignment));
 }
 
 extern "C" void glslc_Free(void* ptr, void* user_data = nullptr)
 {
-    nn::init::GetAllocator()->Free(ptr);
+    auto* alloc = nn::init::GetAllocator();
+    if (alloc) alloc->Free(ptr);
+    else free(ptr);
 }
 
 extern "C" void* glslc_Realloc(void* ptr, size_t size, void* user_data = nullptr)
 {
-    return nn::init::GetAllocator()->Reallocate(ptr, size);
+    auto* alloc = nn::init::GetAllocator();
+    if (alloc) return alloc->Reallocate(ptr, size);
+    return realloc(ptr, size);
 }
 
 void NOINLINE ReadCompiledShader(GLSLCoutput* compileData)

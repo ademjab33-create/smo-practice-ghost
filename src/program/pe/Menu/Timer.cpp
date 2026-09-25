@@ -53,17 +53,21 @@ void Timer::start()
 
 void Timer::stop()
 {
-    mIsRunning = false;
-    if (ILTracker::instance()) {
-        ILTracker::instance()->stopRun();
+    if (mIsRunning) {
+        mEndTick = nn::os::GetSystemTick();
+        mIsRunning = false;
+        if (ILTracker::instance()) {
+            ILTracker::instance()->endRun();
+        }
     }
 }
 
 void Timer::reset()
 {
+    auto now = nn::os::GetSystemTick();
+    mStartTick = now;
+    mEndTick = now;
     mIsRunning = false;
-    mStartTick = 0;
-    mElapsedTicks = 0;
     if (ILTracker::instance()) {
         ILTracker::instance()->resetRun();
     }
@@ -71,19 +75,21 @@ void Timer::reset()
 
 void Timer::event(TimerHookType type)
 {
-    if (getConfig()->mTimerStartType == (int)type) {
+    bool isStartEvent = getConfig()->mTimerStartType == type;
+    if (!mIsRunning && isStartEvent)
         start();
-    }
-    if (getConfig()->mTimerSplit && mIsRunning) {
-        stop();
-    }
+    else if (getConfig()->mTimerSplit)
+        showSplit();
 }
 
-void Timer::update()
+void Timer::showSplit()
 {
-    if (mIsRunning) {
-        mElapsedTicks = nn::os::GetSystemTick() - mStartTick;
+    auto tick = nn::os::GetSystemTick();
+    if (!mIsRunning) {
+        mStartTick = tick;
+        mEndTick = tick;
     }
+    mShowSplitTick = tick;
 }
 
 void Timer::draw()
@@ -91,17 +97,31 @@ void Timer::draw()
     if (!getConfig()->mTimerEnabled)
         return;
 
-    char buf[64];
-    s64 ms = (mElapsedTicks * 1000) / 19200000;
-    s32 totalSec = ms / 1000;
-    s32 min = totalSec / 60;
-    s32 sec = totalSec % 60;
-    s32 remMs = ms % 1000;
+    mFrames++;
 
-    snprintf(buf, sizeof(buf), "%02d:%02d.%03d", min, sec, remMs);
+    if (getConfig()->mTimerIsRTA) {
+        char buffer[32] { 0 };
 
-    ImVec2 pos = getConfig()->mTimerPos;
-    ImGui::GetForegroundDrawList()->AddText(ImGui::GetIO().Fonts->Fonts[0], getConfig()->mTimerFontSize, pos, IM_COL32(255, 255, 255, 255), buf);
+        s64 timerNow = mIsRunning ? nn::os::GetSystemTick().m_tick : mEndTick;
+        bool isShowSplit = mShowSplitTick && float(nn::os::GetSystemTick().m_tick - mShowSplitTick) / nn::os::GetSystemTickFrequency() <= 2;
+        if (isShowSplit)
+            timerNow = mShowSplitTick;
+
+        s64 time = timerNow - mStartTick;
+        s64 seconds = time / nn::os::GetSystemTickFrequency();
+        s64 minutes = seconds / 60;
+        s64 remainingSeconds = seconds % 60;
+        s64 milliseconds = (time % nn::os::GetSystemTickFrequency()) * 1000 / nn::os::GetSystemTickFrequency();
+        if (time / nn::os::GetSystemTickFrequency() >= 60)
+            snprintf(buffer, 32, "%ld:%02ld.%03ld", minutes, remainingSeconds, milliseconds);
+        else
+            snprintf(buffer, 32, "%02ld.%03ld", remainingSeconds, milliseconds);
+
+        if (isShowSplit)
+            ImGui::GetForegroundDrawList()->AddText(ImGui::GetIO().Fonts->Fonts[0], getConfig()->mTimerFontSize, getConfig()->mTimerPos, IM_COL32(255, 0, 0, mFrames % 20 <= 10 ? 255 : 0), buffer);
+        else
+            ImGui::GetForegroundDrawList()->AddText(ImGui::GetIO().Fonts->Fonts[0], getConfig()->mTimerFontSize, getConfig()->mTimerPos, IM_COL32(255, 255, 255, 255), buffer);
+    }
 }
 
 } // namespace pe

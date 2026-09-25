@@ -1,6 +1,6 @@
 #pragma once
 
-#include "al/LiveActor/LiveActor.h"
+#include "al/Library/LiveActor/LiveActor.h"
 #include "pe/Util/Nerve.h"
 #include "util/modules.hpp"
 

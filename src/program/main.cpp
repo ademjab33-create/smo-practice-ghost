@@ -62,7 +62,7 @@ HOOK_DEFINE_TRAMPOLINE(SceneEndInitHook) {
         sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
         auto* ghostMgr = pe::GhostManager::instance();
         if (ghostMgr) {
-            ghostMgr->init(info);
+            ghostMgr->initPuppet(info);
         }
     }
 };

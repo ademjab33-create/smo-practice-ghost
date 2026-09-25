@@ -97,15 +97,6 @@ static void setMapTargetUpdateNullNerve(al::IUseNerve* user, const al::Nerve* ne
     al::setNerve(user, nerve);
 }
 
-HOOK_DEFINE_TRAMPOLINE(IsThrowTypeRolling) { static bool Callback(void* thisPtr, const sead::Vector2f& motion); };
-
-bool IsThrowTypeRolling::Callback(void* thisPtr, const sead::Vector2f& motion)
-{
-    if (getConfig()->mIsEnableDownthrowOnly && motion.x == 0 && motion.y == 0)
-        return true;
-    return Orig(thisPtr, motion);
-}
-
 HOOK_DEFINE_TRAMPOLINE(DoCheckpointTouchNotify) { static void Callback(al::LiveActor * checkpoint); };
 
 void DoCheckpointTouchNotify::Callback(al::LiveActor* checkpoint)
@@ -116,14 +107,14 @@ void DoCheckpointTouchNotify::Callback(al::LiveActor* checkpoint)
 
 void installPracticeHacks()
 {
-    using Patcher = exl::patch::CodePatcher;
-
     IsGotShine::InstallAtOffset(offsets::GameDataFileIsGotShine);
     SetGotShine::InstallAtOffset(offsets::GameDataFunctionSetGotShine);
     StartBgm1::InstallAtOffset(offsets::StartBgm1);
     StartBgm2::InstallAtOffset(offsets::StartBgm2);
     DoCheckpointTouchNotify::InstallAtOffset(offsets::CheckpointTouchHook);
 
+#if GAME_VERSION == 130
+    using Patcher = exl::patch::CodePatcher;
     Patcher(0x000a46ec).BranchLinkInst((void*)getMofumofuTarget);
     Patcher(0x000a4698).BranchLinkInst((void*)isPatternReverse);
     Patcher(0x001d1584).BranchLinkInst((void*)isEnableCheckpointWarp);
@@ -133,10 +124,10 @@ void installPracticeHacks()
 
     Patcher(0x0049d3d0).BranchLinkInst((void*)setMapTargetUpdateNullNerve);
     IsPadTriggerA::InstallAtOffset(0x005cfbd0);
-    // IsThrowTypeRolling::InstallAtOffset(0x003f1530);
 
     exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
     strncpy((char*)a.GetRw(), "Practice Mod", 24);
+#endif
 }
 
 } // namespace pe

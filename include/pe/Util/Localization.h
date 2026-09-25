@@ -5,7 +5,8 @@ namespace pe {
 enum class PeepaLanguage {
     English,
     Japanese,
-    German
+    German,
+    French
 };
 
 const char* getLocalizedString(const char* msg);

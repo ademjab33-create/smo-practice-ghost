@@ -128,29 +128,10 @@ void GhostManager::recordCurrentPlayerFrame(al::Scene* scene, u32 step)
     frame.mPlayerTrans = al::getTrans(player);
     frame.mPlayerQuat = al::getQuat(player);
 
-    // Récupération de Cappy
-    if (player->mHackCap) {
-        frame.mCapTrans = al::getTrans(player->mHackCap);
-        frame.mCapQuat = al::getQuat(player->mHackCap);
-        if (player->mHackCap->mJointKeeper) {
-            frame.mCapJoint = player->mHackCap->mJointKeeper->mJointRot;
-            frame.mCapSkew = player->mHackCap->mJointKeeper->mSkew;
-        }
-        frame.mIsCapVisible = al::isAlive(player->mHackCap);
-    }
-
-    // Récupération des poids de squelette
-    if (player->mPlayerAnimator) {
-        for (int i = 0; i < 6; i++) {
-            frame.mBlendWeights[i] = player->mPlayerAnimator->getBlendWeight(i);
-        }
-    }
-
-    // Mode 2D
-    frame.mIs2D = rs::isPlayer2D(player);
-
-    // Inputs manette
-    frame.mButtons = al::getPadHold(-1);
+    const sead::Vector2f& leftStick = al::getLeftStick(-1);
+    const sead::Vector2f& rightStick = al::getRightStick(-1);
+    frame.mLeftStick = leftStick;
+    frame.mRightStick = rightStick;
 
     mCurrentRunData.appendFrame(frame);
 }

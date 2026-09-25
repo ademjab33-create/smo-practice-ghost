@@ -26,58 +26,67 @@ HOOK_DEFINE_TRAMPOLINE(StartBgm2) { static void Callback(al::IUseAudioKeeper * u
 
 bool IsGotShine::Callback(void* accessor, void* shineInfo)
 {
-    return getConfig()->mIsGrayShineRefreshEnabled ? false : Orig(accessor, shineInfo);
+    auto* cfg = getConfig();
+    return (cfg && cfg->mIsGrayShineRefreshEnabled) ? false : Orig(accessor, shineInfo);
 }
 
 void SetGotShine::Callback(GameDataHolderWriter writer, void* shineInfo)
 {
-    if (!getConfig()->mIsShineRefreshEnabled)
+    auto* cfg = getConfig();
+    if (!cfg || !cfg->mIsShineRefreshEnabled)
         Orig(writer, shineInfo);
 }
 
 void StartBgm1::Callback(al::IUseAudioKeeper* user, const char* bgm, int a, int b)
 {
-    if (!getConfig()->mIsBgmDisabled)
+    auto* cfg = getConfig();
+    if (!cfg || !cfg->mIsBgmDisabled)
         Orig(user, bgm, a, b);
 }
 
 void StartBgm2::Callback(al::IUseAudioKeeper* user, void* request, bool a, bool b)
 {
-    if (!getConfig()->mIsBgmDisabled)
+    auto* cfg = getConfig();
+    if (!cfg || !cfg->mIsBgmDisabled)
         Orig(user, request, a, b);
 }
 
 static bool isPatternReverse()
 {
     bool b = al::isHalfProbability();
-    if (getConfig()->mCurPattern != MofumofuPattern::Random)
-        b = UserConfig::sPatternEntries[getConfig()->mCurPattern - 1].reverse;
+    auto* cfg = getConfig();
+    if (cfg && cfg->mCurPattern != MofumofuPattern::Random)
+        b = UserConfig::sPatternEntries[cfg->mCurPattern - 1].reverse;
     return b;
 }
 
 static int getMofumofuTarget(int a)
 {
     int r = al::getRandom(a);
-    if (getConfig()->mCurPattern != MofumofuPattern::Random)
-        r = UserConfig::sPatternEntries[getConfig()->mCurPattern - 1].target;
+    auto* cfg = getConfig();
+    if (cfg && cfg->mCurPattern != MofumofuPattern::Random)
+        r = UserConfig::sPatternEntries[cfg->mCurPattern - 1].target;
     return r;
 }
 
 static bool isEnableCheckpointWarp(MapLayout* thisPtr)
 {
-    return getConfig()->mIsEnableWarpsAlways ? true : thisPtr->isEnableCheckpointWarp();
+    auto* cfg = getConfig();
+    return (cfg && cfg->mIsEnableWarpsAlways) ? true : thisPtr->isEnableCheckpointWarp();
 }
 
 static bool isEnableSave(StageScene* scene)
 {
-    return getConfig()->mIsEnableAutosave ? scene->isEnableSave() : false;
+    auto* cfg = getConfig();
+    return (cfg && cfg->mIsEnableAutosave) ? scene->isEnableSave() : false;
 }
 
 HOOK_DEFINE_TRAMPOLINE(IsPadTriggerA) { static bool Callback(s32 port); };
 
 bool IsPadTriggerA::Callback(s32 port)
 {
-    if (pe::Menu::instance()->isEnabled())
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
     return Orig(port);
 }
@@ -91,7 +100,7 @@ static void setMapTargetUpdateNullNerve(al::IUseNerve* user, const al::Nerve* ne
     __asm("mov %0, x23"
           : "=r"(mapThingPtr));
 
-    if (mapThingPtr != nullptr)
+    if (mapThingPtr != nullptr && Menu::instance())
         Menu::instance()->setLatestMapTarget(mapThingPtr);
 
     al::setNerve(user, nerve);
@@ -101,20 +110,22 @@ HOOK_DEFINE_TRAMPOLINE(DoCheckpointTouchNotify) { static void Callback(al::LiveA
 
 void DoCheckpointTouchNotify::Callback(al::LiveActor* checkpoint)
 {
-    if (!getConfig()->mDisableCheckpointTouching)
+    auto* cfg = getConfig();
+    if (!cfg || !cfg->mDisableCheckpointTouching)
         Orig(checkpoint);
 }
 
 void installPracticeHacks()
 {
+#if GAME_VERSION == 130
+    using Patcher = exl::patch::CodePatcher;
+
     IsGotShine::InstallAtOffset(offsets::GameDataFileIsGotShine);
     SetGotShine::InstallAtOffset(offsets::GameDataFunctionSetGotShine);
     StartBgm1::InstallAtOffset(offsets::StartBgm1);
     StartBgm2::InstallAtOffset(offsets::StartBgm2);
     DoCheckpointTouchNotify::InstallAtOffset(offsets::CheckpointTouchHook);
 
-#if GAME_VERSION == 130
-    using Patcher = exl::patch::CodePatcher;
     Patcher(0x000a46ec).BranchLinkInst((void*)getMofumofuTarget);
     Patcher(0x000a4698).BranchLinkInst((void*)isPatternReverse);
     Patcher(0x001d1584).BranchLinkInst((void*)isEnableCheckpointWarp);

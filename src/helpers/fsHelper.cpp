@@ -46,7 +46,9 @@ void loadFileFromPath(LoadData& loadData)
 
     long size = 0;
     nn::fs::GetFileSize(&size, handle);
-    loadData.buffer = nn::init::GetAllocator()->Allocate(size);
+    auto* alloc = nn::init::GetAllocator();
+    if (alloc) loadData.buffer = alloc->Allocate(size);
+    else loadData.buffer = malloc(size);
     loadData.bufSize = size;
 
     EXL_ASSERT(loadData.buffer, "Failed to Allocate Buffer! File Size: %ld", size);

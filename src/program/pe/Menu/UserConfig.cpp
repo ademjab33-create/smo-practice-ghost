@@ -6,7 +6,8 @@ namespace pe {
 
 constexpr const char sUserConfigPath[] = "sd:/PeepaUserConfig.bin";
 
-static UserConfig* sConfig = nullptr;
+static UserConfig sUserConfig;
+static UserConfig* sConfig = &sUserConfig;
 
 UserConfig*& getConfig()
 {

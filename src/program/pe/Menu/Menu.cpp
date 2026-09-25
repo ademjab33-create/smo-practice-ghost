@@ -12,6 +12,7 @@
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
+#include "al/Library/LiveActor/ActorPoseUtil.h"
 #include "al/Library/LiveActor/LiveActor.h"
 #include "al/Library/LiveActor/LiveActorGroup.h"
 #include "al/Library/LiveActor/LiveActorKit.h"
@@ -45,6 +46,7 @@
 #include "util/modules.hpp"
 #include <algorithm>
 #include <cstdio>
+#include <cmath>
 
 namespace pe {
 
@@ -56,129 +58,281 @@ sead::Heap*& getMenuHeap()
 
 SEAD_SINGLETON_DISPOSER_IMPL(Menu)
 
-bool someBOol = false;
+static constexpr const char* sStageNames[] {
+    "CapWorldHomeStage",
+    "WaterfallWorldHomeStage",
+    "SandWorldHomeStage",
+    "LakeWorldHomeStage",
+    "ForestWorldHomeStage",
+    "CloudWorldHomeStage",
+    "ClashWorldHomeStage",
+    "CityWorldHomeStage",
+    "SnowWorldHomeStage",
+    "SeaWorldHomeStage",
+    "LavaWorldHomeStage",
+    "BossRaidWorldHomeStage",
+    "SkyWorldHomeStage",
+    "MoonWorldHomeStage",
+    "PeachWorldHomeStage",
+    "Special1WorldHomeStage",
+    "Special2WorldHomeStage"
+};
+
+static constexpr const char* sPatternNames[] {
+    "Random", "Ghost", "Nose", "C", "W", "J", "Medal", "Plane", "Five", "Hangman",
+    "Spanish", "Siblings", "Snake", "Eight", "Mushroom", "Z", "Tetris", "Ear", "Bomb", "Bird", "L", "O", "Star"
+};
+
+static constexpr const char* sMoonNames[] {
+    "Practice Mod", "Hi", "Practice", "Hi BTT", "BTT", "I'm cool", "Super Mario Odyssey", " "
+};
+
+static constexpr const char* sLanguageNames[] {
+    "English", "日本語", "Deutsch", "Français"
+};
+
+static constexpr const char* sStickNames[] { "left", "right" };
+
+static constexpr const char* sBodyNames[] {
+    "Mario",          "Mario64",         "Mario64Metal",      "MarioAloha",
+    "MarioArmor",     "MarioBone",       "MarioClown",        "MarioColorClassic",
+    "MarioColorGold", "MarioColorLuigi", "MarioColorWaluigi", "MarioColorWario",
+    "MarioCook",      "MarioDiddyKong",  "MarioDoctor",       "MarioExplorer",
+    "MarioFootball",  "MarioGolf",       "MarioGunman",       "MarioHakama",
+    "MarioHappi",     "MarioKing",       "MarioKoopa",        "MarioMaker",
+    "MarioMechanic",  "MarioNew3DS",     "MarioPainter",      "MarioPeach",
+    "MarioPilot",     "MarioPirate",     "MarioPoncho",       "MarioPrimitiveMan",
+    "MarioSailor",    "MarioScientist",  "MarioShopman",      "MarioSnowSuit",
+    "MarioSpaceSuit", "MarioSuit",       "MarioSwimwear",     "MarioTailCoat",
+    "MarioTuxedo",    "MarioUnderwear"
+};
+
+static constexpr const char* sCapNames[] {
+    "Mario",          "Mario64",         "Mario64Metal",      "MarioAloha",
+    "MarioArmor",     "MarioBone",       "MarioClown",        "MarioColorClassic",
+    "MarioColorGold", "MarioColorLuigi", "MarioColorWaluigi", "MarioColorWario",
+    "MarioCook",      "MarioDiddyKong",  "MarioDoctor",       "MarioExplorer",
+    "MarioFootball",  "MarioGolf",       "MarioGunman",       "MarioHakama",
+    "MarioHappi",     "MarioKing",       "MarioKoopa",        "MarioMaker",
+    "MarioMechanic",  "MarioNew3DS",     "MarioPainter",      "MarioPeach",
+    "MarioPilot",     "MarioPirate",     "MarioPoncho",       "MarioPrimitiveMan",
+    "MarioSailor",    "MarioScientist",  "MarioShopman",      "MarioSnowSuit",
+    "MarioSpaceSuit", "MarioSuit",       "MarioSwimwear",     "MarioTailCoat",
+    "MarioTuxedo",    "MarioInvisible"
+};
+
+static void applyOutfit(GameDataHolder* holder, const char* body, const char* cap)
+{
+    static void (*sWearCap)(GameDataHolder*, const char*) = nullptr;
+    static void (*sWearCostume)(GameDataHolder*, const char*) = nullptr;
+    if (!sWearCap) {
+        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sWearCap), "_ZN16GameDataFunction7wearCapEP14GameDataHolderPKc");
+    }
+    if (!sWearCostume) {
+        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sWearCostume), "_ZN16GameDataFunction11wearCostumeEP14GameDataHolderPKc");
+    }
+    if (sWearCap) sWearCap(holder, cap);
+    if (sWearCostume) sWearCostume(holder, body);
+}
+
+static void applyDamagePlayer(GameDataHolder* holder)
+{
+    static void (*sDamagePlayer)(GameDataHolderWriter) = nullptr;
+    if (!sDamagePlayer) {
+        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sDamagePlayer), "_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
+    }
+    if (sDamagePlayer) sDamagePlayer(GameDataHolderWriter(holder));
+}
 
 Menu::Menu()
 {
-    getConfig() = new UserConfig;
-    pe::loadConfig();
-
-    mCategories[0].name = "hacks";
-    mCategories[0].components.allocBuffer(6, nullptr);
-    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsGrayShineRefreshEnabled, "grayshinerefresh"));
-    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsShineRefreshEnabled, "shinerefresh"));
-    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsBgmDisabled, "bgmdisable"));
-    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsEnableWarpsAlways, "alwaysenablewarps"));
+    // 0: Options (Refresh Settings + Toggles)
+    mCategories[0].name = "options";
+    mCategories[0].components.allocBuffer(23, nullptr);
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsMoonRefreshEnabled, "moonrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsGrayShineRefreshEnabled, "greymoonrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsPurpleCoinsRefreshEnabled, "purplecoinsrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsDoorRefreshEnabled, "doorsrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsMoonShardsRefreshEnabled, "shardsrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsKingdomEnterCutsceneRefreshEnabled, "kingdomenterrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsWarpTextRefreshEnabled, "warptextrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsSeedsRefreshEnabled, "seedsrefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsCutsceneRefreshEnabled, "cutscenerefresh"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsSeedsGrowing, "seedsgrowing"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsAlwaysManualCutscene, "alwaysmanualcutscene"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsAlwaysCheckpoints, "alwayscheckpoints"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsDisableMoonLock, "disablemoonlock"));
     mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsEnableAutosave, "disableautosave"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsDisableTpPuppet, "disabletppuppet"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsBgmDisabled, "disablemusic"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsNoDamageEnabled, "nodamage"));
     mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mDisableCheckpointTouching, "nocheckpointtouch"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsSkipCloudEnabled, "skipcloud"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsSkipBroodalsEnabled, "skipbroodals"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsAllCheckpointsEnabled, "allcheckpoints"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsLuigiPixelsEnabled, "luigipixels"));
+    mCategories[0].components.pushBack(new BoolMenuComponent(&getConfig()->mIsHintPhotoSpawnEnabled, "spawnallhintart"));
 
-    static constexpr const char* patternNames[] {
-        "Random",
-        "Ghost",
-        "Nose",
-        "C",
-        "W",
-        "J",
-        "Medal",
-        "Plane",
-        "Five",
-        "Hangman",
-        "Spanish",
-        "Siblings",
-        "Snake",
-        "Eight",
-        "Mushroom",
-        "Z",
-        "Tetris",
-        "Ear",
-        "Bomb",
-        "Bird",
-        "L",
-        "O"
-    };
+    // 1: Stage Warp
+    mCategories[1].name = "stage";
+    mCategories[1].components.allocBuffer(3, nullptr);
+    mCategories[1].components.pushBack(new EnumMenuComponent<int>(&getConfig()->mSelectedStageIdx, sStageNames, "Stage", false, false));
+    mCategories[1].components.pushBack(new IntMenuComponent<int>(&getConfig()->mSelectedScenario, "scenario", 0, 15, true));
+    mCategories[1].components.pushBack(new ButtonMenuComponent("go", [this]() {
+        if (mScene && mScene->mIsAlive) {
+            GameDataHolder* holder = (GameDataHolder*)al::getSceneObj(mScene, 20);
+            if (holder) {
+                int scenario = getConfig()->mSelectedScenario;
+                if (scenario == 0) scenario = -1;
+                ChangeStageInfo info = ChangeStageInfo(holder, "start", sStageNames[getConfig()->mSelectedStageIdx], false, scenario, { 0 });
+                holder->changeNextStage(&info, 0);
+            }
+        }
+    }, true));
 
-    mCategories[0].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mCurPattern), patternNames, "mofumofupattern", false, true));
+    // 2: Misc
+    mCategories[2].name = "misc";
+    mCategories[2].components.allocBuffer(17, nullptr);
+    mCategories[2].components.pushBack(new ButtonMenuComponent("saveposition", [this]() {
+        if (mScene && mScene->mIsAlive) savePosition(rs::getPlayerActor(mScene));
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("loadposition", [this]() {
+        if (mScene && mScene->mIsAlive) loadPosition(rs::getPlayerActor(mScene));
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("killmario", [this]() {
+        callAction(ActionType::KillMario);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("damagemario", [this]() {
+        if (mScene && mScene->mIsAlive) {
+            GameDataHolder* holder = (GameDataHolder*)al::getSceneObj(mScene, 20);
+            if (holder) {
+                bool oldNoDmg = getConfig()->mIsNoDamageEnabled;
+                getConfig()->mIsNoDamageEnabled = false;
+                applyDamagePlayer(holder);
+                getConfig()->mIsNoDamageEnabled = oldNoDmg;
+            }
+        }
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("lifeup", [this]() {
+        callAction(ActionType::LifeMaxUp);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("healmario", [this]() {
+        callAction(ActionType::HealMario);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("add1000", [this]() {
+        callAction(ActionType::Add1000Coin);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("sub1000", [this]() {
+        callAction(ActionType::Sub1000Coin);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("killscene", [this]() {
+        callAction(ActionType::KillScene);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("prevscene", [this]() {
+        callAction(ActionType::PrevScene);
+    }, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("warplastcheckpoint", [this]() {
+        callAction(ActionType::WarpCheckpoint);
+    }, true));
+    mCategories[2].components.pushBack(new BoolMenuComponent(&getConfig()->mIsNoclipEnabled, "noclip"));
+    mCategories[2].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mCurPattern), sPatternNames, "wigglerpattern", false, true));
+    mCategories[2].components.pushBack(new EnumMenuComponent<int>(&getConfig()->mMoonNameIdx, sMoonNames, "moonname", false, true));
+    mCategories[2].components.pushBack(new EnumMenuComponent<int>(&getConfig()->mSelectedBody, sBodyNames, "outfitbody", false, true));
+    mCategories[2].components.pushBack(new EnumMenuComponent<int>(&getConfig()->mSelectedCap, sCapNames, "outfitcap", false, true));
+    mCategories[2].components.pushBack(new ButtonMenuComponent("setoutfit", [this]() {
+        if (mScene && mScene->mIsAlive) {
+            GameDataHolder* holder = (GameDataHolder*)al::getSceneObj(mScene, 20);
+            if (holder) {
+                applyOutfit(holder, sBodyNames[getConfig()->mSelectedBody], sCapNames[getConfig()->mSelectedCap]);
+                mScene->kill();
+            }
+        }
+    }, true));
 
-    mCategories[1].name = "timer";
-    mCategories[1].components.allocBuffer(5, nullptr);
-    mCategories[1].components.pushBack(new BoolMenuComponent(&getConfig()->mTimerEnabled, "timer"));
-    mCategories[1].components.pushBack(new IntMenuComponent<float>(&getConfig()->mTimerFontSize, "fontsize", 8, 100, true));
-    mCategories[1].components.pushBack(new Vector2MenuComponent(&getConfig()->mTimerPos, "position", true, ImVec2(0, 0), ImVec2(1600, 900)));
-    static constexpr const char* timerNames[] {
-        "timer0", "timer1", "timer2"
-    };
-    mCategories[1].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mTimerStartType), timerNames, "timerstart", true));
-    mCategories[1].components.pushBack(new BoolMenuComponent(&getConfig()->mTimerSplit, "timersplit"));
+    // 3: Timer (top-right by default, enabled by default, auto kingdom IL)
+    mCategories[3].name = "timer";
+    mCategories[3].components.allocBuffer(8, nullptr);
+    mCategories[3].components.pushBack(new BoolMenuComponent(&getConfig()->mTimerEnabled, "timer"));
+    mCategories[3].components.pushBack(new BoolMenuComponent(&getConfig()->mTimerAutoKingdom, "autokingdom"));
+    mCategories[3].components.pushBack(new BoolMenuComponent(&getConfig()->mTimerSplit, "timersplit"));
+    mCategories[3].components.pushBack(new ButtonMenuComponent("starttimer", []() {
+        if (Timer::sInstance) Timer::sInstance->start();
+    }, true));
+    mCategories[3].components.pushBack(new ButtonMenuComponent("stoptimer", []() {
+        if (Timer::sInstance) Timer::sInstance->stop();
+    }, true));
+    mCategories[3].components.pushBack(new ButtonMenuComponent("resettimer", []() {
+        if (Timer::sInstance) Timer::sInstance->reset();
+    }, true));
+    mCategories[3].components.pushBack(new IntMenuComponent<float>(&getConfig()->mTimerFontSize, "fontsize", 8, 100, true));
+    mCategories[3].components.pushBack(new Vector2MenuComponent(&getConfig()->mTimerPos, "position", true, ImVec2(0, 0), ImVec2(1600, 900)));
 
-    mCategories[2].name = "inputdisplay";
-    mCategories[2].components.allocBuffer(8, nullptr);
-    mCategories[2].components.pushBack(new BoolMenuComponent(&getConfig()->mInputDisplayEnabled, "inputdisplay"));
-    mCategories[2].components.pushBack(new Vector2MenuComponent(&getConfig()->mInputDisplayPos, "position", true, ImVec2(0, 0), ImVec2(1600, 900)));
-    mCategories[2].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayButtonColor), sInputDisplayColorNames, "Button Color", false, false));
-    mCategories[2].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayButtonPressedColor), sInputDisplayColorNames, "Pressed Color", false, false));
-    mCategories[2].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayStickColor), sInputDisplayColorNames, "Stick Color", false, false));
-    mCategories[2].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayRingColor), sInputDisplayColorNames, "Ring Color", false, false));
-    mCategories[2].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayBackColor), sInputDisplayColorNames, "BG Color", false, false));
+    // 4: Input Display
+    mCategories[4].name = "inputdisplay";
+    mCategories[4].components.allocBuffer(8, nullptr);
+    mCategories[4].components.pushBack(new BoolMenuComponent(&getConfig()->mInputDisplayEnabled, "inputdisplay"));
+    mCategories[4].components.pushBack(new BoolMenuComponent(&getConfig()->mInputDisplay2P, "2p_mode"));
+    mCategories[4].components.pushBack(new Vector2MenuComponent(&getConfig()->mInputDisplayPos, "position", true, ImVec2(0, 0), ImVec2(1600, 900)));
+    mCategories[4].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayButtonColor), sInputDisplayColorNames, "Button Color", false, false));
+    mCategories[4].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayButtonPressedColor), sInputDisplayColorNames, "Pressed Color", false, false));
+    mCategories[4].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayStickColor), sInputDisplayColorNames, "Stick Color", false, false));
+    mCategories[4].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayRingColor), sInputDisplayColorNames, "Ring Color", false, false));
+    mCategories[4].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mInputDisplayBackColor), sInputDisplayColorNames, "BG Color", false, false));
 
-    mCategories[3].name = "keybinds";
-    mCategories[3].components.allocBuffer(15, nullptr);
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDUpBind), sActionNames, "dpadup", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDDownBind), sActionNames, "dpaddown", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDLeftBind), sActionNames, "dpadleft", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDRightBind), sActionNames, "dpadright", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mRsLBind), sActionNames, "rsl", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mRsRBind), sActionNames, "rsr", true));
-    mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mZLZRBind), sActionNames, "zlzr", true));
+    // 5: Keybinds & Wheel
+    mCategories[5].name = "keybinds";
+    mCategories[5].components.allocBuffer(15, nullptr);
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDUpBind), sActionNames, "dpadup", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDDownBind), sActionNames, "dpaddown", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDLeftBind), sActionNames, "dpadleft", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mDRightBind), sActionNames, "dpadright", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mRsLBind), sActionNames, "rsl", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mRsRBind), sActionNames, "rsr", true));
+    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mZLZRBind), sActionNames, "zlzr", true));
 
     static constexpr const char* wheelNames[] {
         "wheel1", "wheel2", "wheel3", "wheel4", "wheel5", "wheel6", "wheel7", "wheel8"
     };
     for (int i = 0; i < 8; i++) {
-        mCategories[3].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mQuickMenuBinds[i]), sActionNames, wheelNames[i], true));
+        mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->mQuickMenuBinds[i]), sActionNames, wheelNames[i], true));
     }
 
-    mCategories[4].name = "stage";
-    mCategories[4].components.allocBuffer(3, nullptr);
-    mCategories[4].components.pushBack(new EnumMenuComponent<int>(&getConfig()->mSelectedStageIdx, sStageNames, "Stage", false, false));
-    mCategories[4].components.pushBack(new IntMenuComponent<int>(&getConfig()->mSelectedScenario, "scenario", 0, 15, true));
-    mCategories[4].components.pushBack(new ButtonMenuComponent(
-        "go", [this]() {
-            if (mScene && mScene->mIsAlive) {
-                GameDataHolder* holder = (GameDataHolder*)al::getSceneObj(mScene, 20);
-                if (holder)
+    // 6: Info
+    mCategories[6].name = "info";
+    mCategories[6].components.allocBuffer(4, nullptr);
+    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mIsInfoWindowEnabled, "infowindow"));
+    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mIsPlayerInfoEnabled, "playerinfo"));
+    mCategories[6].components.pushBack(new Vector2MenuComponent(&getConfig()->mInfoPos, "position", true, ImVec2(0, 0), ImVec2(1600, 900)));
+    mCategories[6].components.pushBack(new ButtonMenuComponent("resetinfopos", [this]() {
+        getConfig()->mInfoPos = ImVec2(50.f, 50.f);
+    }, true));
 
-                {
-                    int scenario = getConfig()->mSelectedScenario;
-                    if (scenario == 0)
-                        scenario = -1;
-                    ChangeStageInfo info = ChangeStageInfo(holder, "start", sStageNames[getConfig()->mSelectedStageIdx], false, scenario, { 0 });
-                    holder->changeNextStage(&info, 0);
-                }
-            }
-        },
-        true));
+    // 7: Settings
+    mCategories[7].name = "settings";
+    mCategories[7].components.allocBuffer(3, nullptr);
+    mCategories[7].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->currentLanguage), sLanguageNames, "Language", false, false));
+    mCategories[7].components.pushBack(new IntMenuComponent<int>(&getConfig()->mWheelDelayFrames, "wheeltime", 1, 40, true));
+    mCategories[7].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mWheelActivatedPressRightStick), sStickNames, "wheelstick", true, true));
 
-    mCategories[5].name = "settings";
-    mCategories[5].components.allocBuffer(3, nullptr);
-    static constexpr const char* languageNames[] {
-        "English", "日本語", "Deutsch"
-    };
-    mCategories[5].components.pushBack(new EnumMenuComponent<int>(reinterpret_cast<int*>(&getConfig()->currentLanguage), languageNames, "Language", false, false));
-    mCategories[5].components.pushBack(new IntMenuComponent<int>(&getConfig()->mWheelDelayFrames, "wheeltime", 1, 40, true));
-    static constexpr const char* stickNames[] { "left", "right" };
-    mCategories[5].components.pushBack(new EnumMenuComponent<u8>(reinterpret_cast<u8*>(&getConfig()->mWheelActivatedPressRightStick), stickNames, "wheelstick", true, true));
+    // 8: Ghost & PB
+    mCategories[8].name = "ghost";
+    mCategories[8].components.allocBuffer(4, nullptr);
+    mCategories[8].components.pushBack(new BoolMenuComponent(&getConfig()->mGhostEnabled, "ghostreplay"));
+    mCategories[8].components.pushBack(new BoolMenuComponent(&getConfig()->mPBOverlayEnabled, "pboverlay"));
+    mCategories[8].components.pushBack(new IntMenuComponent<float>(&getConfig()->mGhostAlpha, "ghostalpha", 0.05f, 1.0f, true));
+    mCategories[8].components.pushBack(new ButtonMenuComponent("resetpb", [this]() {
+        auto* tracker = ILTracker::instance();
+        if (tracker) {
+            PBStorage::instance()->resetRecord(tracker->getCurrentKingdom(), tracker->getCurrentSegment());
+        }
+    }, true));
 
-    mCategories[6].name = "ghost";
-    mCategories[6].components.allocBuffer(3, nullptr);
-    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mGhostEnabled, "ghostreplay"));
-    mCategories[6].components.pushBack(new BoolMenuComponent(&getConfig()->mPBOverlayEnabled, "pboverlay"));
-    mCategories[6].components.pushBack(new IntMenuComponent<float>(&getConfig()->mGhostAlpha, "ghostalpha", 0.05f, 1.0f, true));
-
-    mComponents.allocBuffer(4, nullptr);
+    mComponents.allocBuffer(6, nullptr);
     mComponents.pushBack(new QuickActionMenu(*this));
     mComponents.pushBack(new Timer);
     mComponents.pushBack(new MofumofuPatternUpdateNotification);
     mComponents.pushBack(new InputDisplay);
+    mComponents.pushBack(new PBOverlay);
 }
 
 void Menu::update(al::Scene* scene)
@@ -212,9 +366,7 @@ void Menu::draw()
             component->draw();
     }
 
-    if (getConfig()->mPBOverlayEnabled) {
-        PBOverlay::draw();
-    }
+    drawInfoWindows();
 
     if (!mIsEnabled) {
         if (al::isPadTriggerUp(-1))
@@ -278,8 +430,6 @@ void Menu::drawExpandedCategory()
         subY += size.y;
     }
 
-    // ImGui::GetForegroundDrawList()->AddRectFilled(ImVec2(mBgSize.x, y), ImVec2(mBgSize.x + subX, y + subY), IM_COL32(0, 0, 0, 128), 15);
-
     getCurrentCategory().components[mCurrentComponentInCategory]->setIsHovered(true);
 
     subY = 0;
@@ -303,20 +453,77 @@ void Menu::drawExpandedCategory()
     }
 }
 
+void Menu::drawInfoWindows()
+{
+    auto* cfg = getConfig();
+    if (!cfg) return;
+
+    if (cfg->mIsInfoWindowEnabled) {
+        ImGui::SetNextWindowPos(cfg->mInfoPos, ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(340, 200), ImGuiCond_FirstUseEver);
+        if (ImGui::Begin("Info Window", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (mScene && mScene->mIsAlive) {
+                GameDataHolder* holder = reinterpret_cast<GameDataHolder*>(al::getSceneObj(mScene, 20));
+                if (holder) {
+                    static s32 (*sGetJumpCount)(void*) = nullptr;
+                    static s32 (*sGetThrowCapCount)(void*) = nullptr;
+                    static s32 (*sGetTotalCoinNum)(void*) = nullptr;
+                    static u64 (*sGetPlayTimeTotal)(GameDataHolderAccessor) = nullptr;
+                    static u64 (*sGetPlayTimeAcrossFile)(GameDataHolderAccessor) = nullptr;
+
+                    if (!sGetJumpCount) {
+                        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetJumpCount), "_ZN2rs18getPlayerJumpCountEP14GameDataHolder");
+                        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetThrowCapCount), "_ZN2rs22getPlayerThrowCapCountEP14GameDataHolder");
+                        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetTotalCoinNum), "_ZN2rs15getTotalCoinNumEP14GameDataHolder");
+                        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetPlayTimeTotal), "_ZN16GameDataFunction16getPlayTimeTotalE22GameDataHolderAccessor");
+                        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetPlayTimeAcrossFile), "_ZN16GameDataFunction21getPlayTimeAcrossFileE22GameDataHolderAccessor");
+                    }
+
+                    s32 jumps = sGetJumpCount ? sGetJumpCount(holder) : 0;
+                    s32 throws = sGetThrowCapCount ? sGetThrowCapCount(holder) : 0;
+                    s32 coins = sGetTotalCoinNum ? sGetTotalCoinNum(holder) : 0;
+                    u64 totalTime = sGetPlayTimeTotal ? sGetPlayTimeTotal(GameDataHolderAccessor(holder)) : 0;
+                    u64 acrossTime = sGetPlayTimeAcrossFile ? sGetPlayTimeAcrossFile(GameDataHolderAccessor(holder)) : 0;
+
+                    ImGui::Text("Jumps: %d", jumps);
+                    ImGui::Text("Cap Throws: %d", throws);
+                    ImGui::Text("Total Coins: %d", coins);
+                    ImGui::Text("Play Time Total: %lu", totalTime);
+                    ImGui::Text("Play Time Across File: %lu", acrossTime);
+                } else {
+                    ImGui::Text("Waiting for stage...");
+                }
+            }
+            ImGui::End();
+        }
+    }
+
+    if (cfg->mIsPlayerInfoEnabled && mScene && mScene->mIsAlive) {
+        PlayerActorBase* playerBase = reinterpret_cast<PlayerActorBase*>(rs::getPlayerActor(mScene));
+        if (playerBase) {
+            ImGui::SetNextWindowPos(ImVec2(cfg->mInfoPos.x, cfg->mInfoPos.y + 220.f), ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(340, 220), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Player Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize)) {
+                al::LiveActor* actor = reinterpret_cast<al::LiveActor*>(playerBase);
+                sead::Vector3f pos = al::getTrans(actor);
+                sead::Vector3f vel = al::getVelocity(actor);
+                float hSpeed = al::calcSpeedH(actor);
+                float vSpeed = al::calcSpeedV(actor);
+                float speed = al::calcSpeed(actor);
+                ImGui::Text("Pos:   %.1f, %.1f, %.1f", pos.x, pos.y, pos.z);
+                ImGui::Text("Vel:   %.1f, %.1f, %.1f", vel.x, vel.y, vel.z);
+                ImGui::Text("Speed: %.2f (H: %.2f, V: %.2f)", speed, hSpeed, vSpeed);
+                ImGui::End();
+            }
+        }
+    }
+}
+
 void Menu::updateInput()
 {
     if (al::isPadHoldL(-1) && al::isPadTriggerLeft(-1)) {
         mIsEnabled = !mIsEnabled;
         return;
-    }
-
-    if (al::isPadHoldR(-1)) {
-        auto* gm = GhostManager::instance();
-        if (gm) {
-            if (al::isPadTriggerUp(-1))   gm->startRun();
-            if (al::isPadTriggerDown(-1)) gm->stopRun();
-            if (al::isPadTriggerLeft(-1)) gm->resetRun();
-        }
     }
 
     if (!mIsExpandedCurrentCategory) {
@@ -394,18 +601,24 @@ void Menu::loadPosition(al::LiveActor* playerBase)
     }
 }
 
+int Menu::getCategoryHeight(int id)
+{
+    int height = 0;
+    for (int i = 0; i < id; i++) {
+        ImVec2 textSize = ImGui::GetIO().Fonts->Fonts[0]->CalcTextSizeA(sCategoryFontSize, FLT_MAX, 0.f, pe::getLocalizedString(mCategories[i].name));
+        height += sCategorySpacing + textSize.y + sCategorySpacing;
+    }
+    return height;
+}
+
 void Menu::callAction(ActionType type)
 {
     if (mScene && mScene->mIsAlive) {
         const al::Nerve* nrv = mScene->getNerveKeeper()->getCurrentNerve();
-        #if GAME_VERSION == 130
         bool allowedNerve = (nrv == util::getNerveAt(offsets::StageSceneNrvPlay) || nrv == util::getNerveAt(offsets::StageSceneNrvShineGet));
         uintptr_t typeInfo = *reinterpret_cast<uintptr_t*>(pe::util::getVft(nrv) - 8);
         const char** typeName = reinterpret_cast<const char**>(typeInfo + 8);
         if (strstr(*typeName, "StageSceneNrvDemo") or allowedNerve) {
-#else
-        if (true) {
-#endif
             PlayerActorBase* playerBase = reinterpret_cast<PlayerActorBase*>(rs::getPlayerActor(mScene));
             switch (type) {
             case ActionType::KillScene: {
@@ -468,6 +681,10 @@ void Menu::callAction(ActionType type)
                 }
                 return;
             }
+            case ActionType::ToggleNoclip: {
+                getConfig()->mIsNoclipEnabled = !getConfig()->mIsNoclipEnabled;
+                return;
+            }
             default:
                 break;
             }
@@ -476,32 +693,28 @@ void Menu::callAction(ActionType type)
 
     switch (type) {
     case ActionType::StartTimer:
-        Timer::sInstance->start();
+        if (Timer::sInstance) Timer::sInstance->start();
         return;
     case ActionType::StopTimer:
-        Timer::sInstance->stop();
+        if (Timer::sInstance) Timer::sInstance->stop();
         return;
     case ActionType::ResetTimer:
-        Timer::sInstance->reset();
+        if (Timer::sInstance) Timer::sInstance->reset();
         return;
+    case ActionType::NextMofumofuPattern: {
+        int pattern = (int)getConfig()->mCurPattern + 1;
+        if (pattern > 22) pattern = 0;
+        getConfig()->mCurPattern = (MofumofuPattern)pattern;
+        return;
+    }
+    case ActionType::PrevMofumofuPattern: {
+        int pattern = (int)getConfig()->mCurPattern - 1;
+        if (pattern < 0) pattern = 22;
+        getConfig()->mCurPattern = (MofumofuPattern)pattern;
+        return;
+    }
     default:
         break;
-    }
-
-    if (type == ActionType::PrevMofumofuPattern or type == ActionType::NextMofumofuPattern) {
-        int& pattern = *reinterpret_cast<int*>(&getConfig()->mCurPattern);
-
-        if (type == ActionType::PrevMofumofuPattern)
-            pattern--;
-        else
-            pattern++;
-
-        if (pattern > 22)
-            pattern = 0;
-        if (pattern < 0)
-            pattern = 22;
-        MofumofuPatternUpdateNotification::sInstance->setUpdated();
-        return;
     }
 }
 

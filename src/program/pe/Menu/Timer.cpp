@@ -6,7 +6,6 @@
 #include "patch/code_patcher.hpp"
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Offsets.h"
-#include "pe/Ghost/ILTracker.h"
 #include <cstdio>
 
 namespace pe {
@@ -17,9 +16,6 @@ static void shineGrabHook(al::LiveActor* shine)
 {
     al::invalidateClipping(shine);
     Timer::sInstance->event(TimerHookType::ShineGrab);
-    if (ILTracker::instance()) {
-        ILTracker::instance()->notifyMoonStory();
-    }
 }
 
 static bool shineTickHook(al::LiveActor* actor)
@@ -44,9 +40,6 @@ void Timer::start()
 {
     mStartTick = nn::os::GetSystemTick();
     mIsRunning = true;
-    if (ILTracker::instance()) {
-        ILTracker::instance()->startRun();
-    }
 }
 
 void Timer::stop()
@@ -54,9 +47,6 @@ void Timer::stop()
     if (mIsRunning) {
         mEndTick = nn::os::GetSystemTick();
         mIsRunning = false;
-        if (ILTracker::instance()) {
-            ILTracker::instance()->endRun();
-        }
     }
 }
 
@@ -66,9 +56,6 @@ void Timer::reset()
     mStartTick = now;
     mEndTick = now;
     mIsRunning = false;
-    if (ILTracker::instance()) {
-        ILTracker::instance()->resetRun();
-    }
 }
 
 void Timer::event(TimerHookType type)

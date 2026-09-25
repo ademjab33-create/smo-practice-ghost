@@ -3,7 +3,7 @@
 #include "al/Library/LiveActor/ActorClippingFunction.h"
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
-#include "al/Library/LiveActor/ActorInitInfo.h"
+#include "al/Library/LiveActor/ActorInitFunction.h"
 #include "al/Library/LiveActor/ActorModelFunction.h"
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
 #include "al/Library/LiveActor/ActorSensorUtil.h"

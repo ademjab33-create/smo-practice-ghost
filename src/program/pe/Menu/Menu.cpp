@@ -12,7 +12,7 @@
 #include "al/Library/LiveActor/ActorCollisionFunction.h"
 #include "al/Library/LiveActor/ActorFlagFunction.h"
 #include "al/Library/LiveActor/ActorPoseKeeper.h"
-#include "al/Library/LiveActor/ActorPoseUtil.h"
+#include "al/Library/LiveActor/ActorMovementFunction.h"
 #include "al/Library/LiveActor/LiveActor.h"
 #include "al/Library/LiveActor/LiveActorGroup.h"
 #include "al/Library/LiveActor/LiveActorKit.h"

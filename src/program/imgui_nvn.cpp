@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include "imgui_nvn.h"
 #include "helpers/InputHelper.h"
 #include "imgui_backend/imgui_impl_nvn.hpp"

@@ -15,32 +15,37 @@ HOOK_DEFINE_TRAMPOLINE(DPadRight) { static bool Callback(int port); };
 
 static bool dpadHook(int port, int mask)
 {
-    if (pe::Menu::instance()->isEnabled())
+    auto* menu = pe::Menu::instance();
+    if (menu && menu->isEnabled())
         return false;
     return al::isPadTrigger(port, mask);
 }
 
 bool DPadUp::Callback(int port)
 {
-    if (getConfig()->mDUpBind != ActionType::None)
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDUpBind != ActionType::None)
         return false;
     return dpadHook(port, 1 << 16);
 }
 bool DPadDown::Callback(int port)
 {
-    if (getConfig()->mDDownBind != ActionType::None)
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDDownBind != ActionType::None)
         return false;
     return dpadHook(port, 1 << 17);
 }
 bool DPadLeft::Callback(int port)
 {
-    if (getConfig()->mDLeftBind != ActionType::None)
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDLeftBind != ActionType::None)
         return false;
     return dpadHook(port, 1 << 18);
 }
 bool DPadRight::Callback(int port)
 {
-    if (getConfig()->mDRightBind != ActionType::None)
+    auto* cfg = getConfig();
+    if (cfg && cfg->mDRightBind != ActionType::None)
         return false;
     return dpadHook(port, 1 << 19);
 }

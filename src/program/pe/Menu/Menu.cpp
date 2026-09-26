@@ -495,7 +495,9 @@ void Menu::drawInfoWindows()
             if (ImGui::Begin("Player Info", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize)) {
                 al::LiveActor* actor = reinterpret_cast<al::LiveActor*>(playerBase);
                 sead::Vector3f pos = al::getTrans(actor);
-                sead::Vector3f vel = al::getVelocity(actor);
+                static sead::Vector3f sLastPos(0, 0, 0);
+                sead::Vector3f vel = (pos - sLastPos) * 60.0f;
+                sLastPos = pos;
                 float hSpeed = std::sqrt(vel.x * vel.x + vel.z * vel.z);
                 float vSpeed = vel.y;
                 float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);

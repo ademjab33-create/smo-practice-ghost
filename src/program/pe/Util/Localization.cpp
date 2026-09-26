@@ -22,7 +22,6 @@ constexpr MsgEntry sLocalizationData[] {
     { "keybinds", { "Keybinds", "キー設定", "Tastenkürzel", "Raccourcis" } },
     { "info", { "Info", "情報", "Info", "Informations" } },
     { "settings", { "Settings", "詳細設定", "Einstellungen", "Paramètres" } },
-    { "ghost", { "Ghost & PB", "ゴースト & PB", "Geist & PB", "Fantôme & PB" } },
 
     // Actions
     { "action0", { "None", "なし", "Keine", "Aucun" } },

@@ -105,4 +105,13 @@ void Timer::draw()
     }
 }
 
+void installTimerHooks()
+{
+    using Patcher = exl::patch::CodePatcher;
+    // ShineGrabHook: replaces a BL in ShineCounter::exeShineCountAdd
+    Patcher(offsets::ShineGrabHook).BranchLinkInst((void*)shineGrabHook);
+    // ShineTickHook: replaces a BL in StageScene::exeDemoShineGet
+    Patcher(offsets::ShineTickHook).BranchLinkInst((void*)shineTickHook);
+}
+
 } // namespace pe

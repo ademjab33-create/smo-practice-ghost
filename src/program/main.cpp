@@ -21,6 +21,14 @@ void FileDeviceMgrCtor::Callback(sead::FileDeviceMgr* thisPtr)
     thisPtr->mMountedSd = nn::fs::MountSdCardForDebug("sd").IsSuccess();
 }
 
+namespace al {
+sead::Heap* getSequenceHeap() {
+    using FuncType = sead::Heap* (*)();
+    static FuncType sFunc = reinterpret_cast<FuncType>(exl::util::modules::GetTargetOffset(0x006a2990));
+    return sFunc();
+}
+}
+
 class HakoniwaSequence;
 static HakoniwaSequence* sHakoniwaSequence = nullptr;
 

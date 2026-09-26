@@ -14,6 +14,7 @@
 #include "patch/code_patcher.hpp"
 #include "pe/Menu/Menu.h"
 #include "pe/Menu/UserConfig.h"
+#include "pe/Menu/Timer.h"
 #include "pe/Util/Offsets.h"
 #include "Player/PlayerActorHakoniwa.h"
 #include "replace.hpp"
@@ -36,8 +37,8 @@ HOOK_DEFINE_TRAMPOLINE(RefreshPurpsHook) { static bool Callback(void* accessor, 
 HOOK_DEFINE_TRAMPOLINE(DoorRefreshHook) { static void Callback(al::LiveActor* door, const void* info); };
 HOOK_DEFINE_TRAMPOLINE(SeedGrowTimeHook) { static int Callback(const al::LiveActor* actor, const void* id); };
 HOOK_DEFINE_TRAMPOLINE(SeedUsedHook) { static bool Callback(const al::LiveActor* actor, const void* id); };
-HOOK_DEFINE_TRAMPOLINE(KingdomEnterHook) { static bool Callback(void* data, int i); };
-HOOK_DEFINE_TRAMPOLINE(DisableMoonLockHook) { static int Callback(void* file, void* a, void* b, int worldID); };
+// KingdomEnterHook uses static function + BranchInst (no trampoline needed for tiny function)
+HOOK_DEFINE_TRAMPOLINE(DisableMoonLockHook) { static int Callback(void* holder, void* isCrashList, int worldID); };
 HOOK_DEFINE_TRAMPOLINE(AllCheckpointsHook) { static bool Callback(void* file, int checkpointIdx); };
 HOOK_DEFINE_TRAMPOLINE(CloudSkipHook) { static bool Callback(StageScene* stageScene); };
 HOOK_DEFINE_TRAMPOLINE(SkipBroodalsHook) { static bool Callback(StageScene* stageScene); };
@@ -202,15 +203,24 @@ bool SeedUsedHook::Callback(const al::LiveActor* actor, const void* id)
     return Orig(actor, id);
 }
 
-bool KingdomEnterHook::Callback(void* data, int i)
+// KingdomEnterHook: The function at 0x004e1060 is only 5 instructions with no
+// stack frame, so InstallAtOffset/trampoline cannot be used. We use BranchInst
+// to completely replace it with our static function that reimplements the
+// original logic: LDR X8,[X0,#0x48]; LDRB W8,[X8,X1,UXTW]; CMP W8,#0; CSET W0,NE; RET
+static bool kingdomEnterHookStatic(void* data, int i)
 {
     auto* cfg = getConfig();
-    return (cfg && cfg->mIsKingdomEnterCutsceneRefreshEnabled) ? false : Orig(data, i);
+    if (cfg && cfg->mIsKingdomEnterCutsceneRefreshEnabled)
+        return false;
+    // Original logic: *(uint8_t*)(*(uint64_t*)((uintptr_t)data + 0x48) + i) != 0
+    void* ptr = *(void**)((uintptr_t)data + 0x48);
+    if (!ptr) return false;
+    return *(uint8_t*)((uintptr_t)ptr + (unsigned)i) != 0;
 }
 
-int DisableMoonLockHook::Callback(void* file, void* a, void* b, int worldID)
+int DisableMoonLockHook::Callback(void* holder, void* isCrashList, int worldID)
 {
-    int lockSize = Orig(file, a, b, worldID);
+    int lockSize = Orig(holder, isCrashList, worldID);
     auto* cfg = getConfig();
     return (cfg && cfg->mIsDisableMoonLock) ? 0 : lockSize;
 }
@@ -359,7 +369,7 @@ void installPracticeHacks()
     RefreshPurpsHook::InstallAtOffset(0x004d4da0);
     DoorRefreshHook::InstallAtOffset(0x0022ff40);
     Patcher(0x001b87ac).BranchLinkInst((void*)shardRefreshHook);
-    KingdomEnterHook::InstallAtOffset(0x004e1060);
+    Patcher(0x004e1060).BranchInst((void*)kingdomEnterHookStatic);
     Patcher(0x004d3880).BranchInst((void*)warpTextHook);
     NoDamageHook::InstallAtOffset(0x004d3a30);
     SeedGrowTimeHook::InstallAtOffset(0x004dd230);
@@ -368,6 +378,11 @@ void installPracticeHacks()
     AllCheckpointsHook::InstallAtOffset(0x004cf720);
     DisableMoonLockHook::InstallAtOffset(0x004cda80);
     ToadRefreshHook::InstallAtOffset(0x004dd520);
+
+    // Timer hooks - shineGrabHook and shineTickHook are defined in Timer.cpp
+    // These replace BL instructions at mid-function points in ShineCounter::exeShineCountAdd
+    // and StageScene::exeDemoShineGet respectively.
+    installTimerHooks();
 
     exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
     strncpy((char*)a.GetRw(), "Practice Mod", 24);

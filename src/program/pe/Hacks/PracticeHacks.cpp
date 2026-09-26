@@ -32,14 +32,13 @@ HOOK_DEFINE_TRAMPOLINE(DoCheckpointTouchNotify) { static void Callback(al::LiveA
 
 // Hooks from Practice 1.0 (BTT-Studio)
 HOOK_DEFINE_TRAMPOLINE(NoDamageHook) { static void Callback(GameDataHolderWriter writer); };
-HOOK_DEFINE_TRAMPOLINE(WarpTextHook) { static bool Callback(void* accessor); };
 HOOK_DEFINE_TRAMPOLINE(RefreshPurpsHook) { static bool Callback(void* accessor, const void* info); };
 HOOK_DEFINE_TRAMPOLINE(DoorRefreshHook) { static void Callback(al::LiveActor* door, const void* info); };
 HOOK_DEFINE_TRAMPOLINE(SeedGrowTimeHook) { static int Callback(const al::LiveActor* actor, const void* id); };
 HOOK_DEFINE_TRAMPOLINE(SeedUsedHook) { static bool Callback(const al::LiveActor* actor, const void* id); };
 HOOK_DEFINE_TRAMPOLINE(KingdomEnterHook) { static bool Callback(void* data, int i); };
-HOOK_DEFINE_TRAMPOLINE(DisableMoonLockHook) { static int Callback(GameDataHolder* thisPtr, bool* isCrashList, int worldID); };
-HOOK_DEFINE_TRAMPOLINE(AllCheckpointsHook) { static bool Callback(void* acc, int checkpointIdx); };
+HOOK_DEFINE_TRAMPOLINE(DisableMoonLockHook) { static int Callback(void* file, void* a, void* b, int worldID); };
+HOOK_DEFINE_TRAMPOLINE(AllCheckpointsHook) { static bool Callback(void* file, int checkpointIdx); };
 HOOK_DEFINE_TRAMPOLINE(CloudSkipHook) { static bool Callback(StageScene* stageScene); };
 HOOK_DEFINE_TRAMPOLINE(SkipBroodalsHook) { static bool Callback(StageScene* stageScene); };
 HOOK_DEFINE_TRAMPOLINE(HintPhotoHook) { static bool Callback(const al::LiveActor* actor, const char* name); };
@@ -152,10 +151,23 @@ void NoDamageHook::Callback(GameDataHolderWriter writer)
     Orig(writer);
 }
 
-bool WarpTextHook::Callback(void* accessor)
+static bool warpTextHook(void* accessor)
 {
     auto* cfg = getConfig();
-    return (cfg && cfg->mIsWarpTextRefreshEnabled) ? false : Orig(accessor);
+    if (cfg && cfg->mIsWarpTextRefreshEnabled) return false;
+    if (!accessor) return false;
+    void* file = *(void**)((uintptr_t)accessor + 0x20);
+    if (!file) return false;
+    return *(uint8_t*)((uintptr_t)file + 0xab8) != 0;
+}
+
+static bool shardRefreshHook(void* a, void* b)
+{
+    auto* cfg = getConfig();
+    if (cfg && cfg->mIsMoonShardsRefreshEnabled) return false;
+    typedef bool (*OrigFn)(void*, void*);
+    static OrigFn orig = (OrigFn)exl::util::modules::GetTargetOffset(0x0058d210);
+    return orig ? orig(a, b) : false;
 }
 
 bool RefreshPurpsHook::Callback(void* accessor, const void* info)
@@ -169,10 +181,8 @@ void DoorRefreshHook::Callback(al::LiveActor* door, const void* info)
     Orig(door, info);
     auto* cfg = getConfig();
     if (cfg && cfg->mIsDoorRefreshEnabled) {
-        static void (*sSwitchCloseAgain)(al::LiveActor*) = nullptr;
-        if (!sSwitchCloseAgain) {
-            nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sSwitchCloseAgain), "_ZN14DoorAreaChange16switchCloseAgainEv");
-        }
+        typedef void (*SwitchCloseAgainFn)(al::LiveActor*);
+        static SwitchCloseAgainFn sSwitchCloseAgain = (SwitchCloseAgainFn)exl::util::modules::GetTargetOffset(0x002301c0);
         if (sSwitchCloseAgain) sSwitchCloseAgain(door);
     }
 }
@@ -198,18 +208,18 @@ bool KingdomEnterHook::Callback(void* data, int i)
     return (cfg && cfg->mIsKingdomEnterCutsceneRefreshEnabled) ? false : Orig(data, i);
 }
 
-int DisableMoonLockHook::Callback(GameDataHolder* thisPtr, bool* isCrashList, int worldID)
+int DisableMoonLockHook::Callback(void* file, void* a, void* b, int worldID)
 {
-    int lockSize = Orig(thisPtr, isCrashList, worldID);
+    int lockSize = Orig(file, a, b, worldID);
     auto* cfg = getConfig();
     return (cfg && cfg->mIsDisableMoonLock) ? 0 : lockSize;
 }
 
-bool AllCheckpointsHook::Callback(void* acc, int checkpointIdx)
+bool AllCheckpointsHook::Callback(void* file, int checkpointIdx)
 {
     auto* cfg = getConfig();
     if (cfg && cfg->mIsAllCheckpointsEnabled) return true;
-    return Orig(acc, checkpointIdx);
+    return Orig(file, checkpointIdx);
 }
 
 bool CloudSkipHook::Callback(StageScene* stageScene)
@@ -344,6 +354,20 @@ void installPracticeHacks()
 
     Patcher(0x0049d3d0).BranchLinkInst((void*)setMapTargetUpdateNullNerve);
     IsPadTriggerA::InstallAtOffset(0x005cfbd0);
+
+    // Practice 1.0 options
+    RefreshPurpsHook::InstallAtOffset(0x004d4da0);
+    DoorRefreshHook::InstallAtOffset(0x0022ff40);
+    Patcher(0x001b87ac).BranchLinkInst((void*)shardRefreshHook);
+    KingdomEnterHook::InstallAtOffset(0x004e1060);
+    Patcher(0x004d3880).BranchInst((void*)warpTextHook);
+    NoDamageHook::InstallAtOffset(0x004d3a30);
+    SeedGrowTimeHook::InstallAtOffset(0x004dd230);
+    SeedUsedHook::InstallAtOffset(0x004dd260);
+    CloudSkipHook::InstallAtOffset(0x004b3c80);
+    AllCheckpointsHook::InstallAtOffset(0x004cf720);
+    DisableMoonLockHook::InstallAtOffset(0x004cda80);
+    ToadRefreshHook::InstallAtOffset(0x004dd520);
 
     exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
     strncpy((char*)a.GetRw(), "Practice Mod", 24);

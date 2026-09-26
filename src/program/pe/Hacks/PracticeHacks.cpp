@@ -307,11 +307,7 @@ void NoclipHook::Callback(PlayerActorHakoniwa* player)
 
     player->startDemoPuppetable();
 
-    sead::Vector3f* playerPos = al::getTransPtr(player);
-    if (!playerPos) {
-        Orig(player);
-        return;
-    }
+    sead::Vector3f playerPos = al::getTrans(player);
 
     const sead::Vector2f& leftStick = al::getLeftStick(-1);
     const sead::Vector2f& rightStick = al::getRightStick(-1);
@@ -319,15 +315,14 @@ void NoclipHook::Callback(PlayerActorHakoniwa* player)
     float speed = 25.0f;
     if (al::isPadHoldX(-1) || al::isPadHoldY(-1)) speed = 75.0f;
 
-    sead::Vector3f front = al::getFront(player);
-    sead::Vector3f right(front.z, 0.0f, -front.x);
+    playerPos.x += leftStick.x * speed;
+    playerPos.z -= leftStick.y * speed;
 
-    playerPos->x += (front.x * leftStick.y + right.x * leftStick.x) * speed;
-    playerPos->z += (front.z * leftStick.y + right.z * leftStick.x) * speed;
+    if (al::isPadHoldZL(-1) || al::isPadHoldL(-1)) playerPos.y -= speed;
+    if (al::isPadHoldZR(-1) || al::isPadHoldR(-1)) playerPos.y += speed;
+    if (std::abs(rightStick.y) > 0.1f) playerPos.y += rightStick.y * speed;
 
-    if (al::isPadHoldZL(-1) || al::isPadHoldL(-1)) playerPos->y -= speed;
-    if (al::isPadHoldZR(-1) || al::isPadHoldR(-1)) playerPos->y += speed;
-    if (std::abs(rightStick.y) > 0.1f) playerPos->y += rightStick.y * speed;
+    al::setTrans(player, playerPos);
 
     Orig(player);
 }

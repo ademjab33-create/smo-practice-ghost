@@ -103,18 +103,16 @@ static int getMofumofuTarget(int a)
     return r;
 }
 
-HOOK_DEFINE_TRAMPOLINE(IsEnableSave) { static bool Callback(StageScene* scene); };
-bool IsEnableSave::Callback(StageScene* scene)
+static bool isEnableSave(StageScene* scene)
 {
     auto* cfg = getConfig();
-    return (cfg && cfg->mIsEnableAutosave) ? Orig(scene) : false;
+    return (cfg && cfg->mIsEnableAutosave) ? scene->isEnableSave() : false;
 }
 
-HOOK_DEFINE_TRAMPOLINE(IsEnableCheckpointWarp) { static bool Callback(MapLayout* thisPtr); };
-bool IsEnableCheckpointWarp::Callback(MapLayout* thisPtr)
+static bool isEnableCheckpointWarp(MapLayout* thisPtr)
 {
     auto* cfg = getConfig();
-    return (cfg && (cfg->mIsAlwaysCheckpoints || cfg->mIsAllCheckpointsEnabled)) ? true : Orig(thisPtr);
+    return (cfg && (cfg->mIsAlwaysCheckpoints || cfg->mIsAllCheckpointsEnabled)) ? true : thisPtr->isEnableCheckpointWarp();
 }
 
 bool IsPadTriggerA::Callback(s32 port)
@@ -329,34 +327,26 @@ void NoclipHook::Callback(PlayerActorHakoniwa* player)
 
 void installPracticeHacks()
 {
-    IsEnableSave::InstallAtOffset(0x004731a0);
-    IsEnableCheckpointWarp::InstallAtOffset(0x001d0b00);
+    using Patcher = exl::patch::CodePatcher;
 
-    IsGotShine::InstallAtSymbol("_ZN16GameDataFunction10isGotShineE22GameDataHolderAccessorPK9ShineInfo");
-    SetGotShine::InstallAtSymbol("_ZN16GameDataFunction11setGotShineE20GameDataHolderWriterPK9ShineInfo");
-    DoCheckpointTouchNotify::InstallAtSymbol("_ZN2rs31setTouchCheckpointFlagToWatcherEP14CheckpointFlag");
+    IsGotShine::InstallAtOffset(offsets::GameDataFileIsGotShine);
+    SetGotShine::InstallAtOffset(offsets::GameDataFunctionSetGotShine);
+    StartBgm1::InstallAtOffset(offsets::StartBgm1);
+    StartBgm2::InstallAtOffset(offsets::StartBgm2);
+    DoCheckpointTouchNotify::InstallAtOffset(offsets::CheckpointTouchHook);
 
-    NoDamageHook::InstallAtSymbol("_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
-    WarpTextHook::InstallAtSymbol("_ZN16GameDataFunction34isAlreadyShowExplainCheckpointFlagE22GameDataHolderAccessor");
-    RefreshPurpsHook::InstallAtSymbol("_ZN16GameDataFunction16isGotCoinCollectE22GameDataHolderAccessorRKN2al13ActorInitInfoE");
-    DoorRefreshHook::InstallAtSymbol("_ZN14DoorAreaChange4initERKN2al13ActorInitInfoE");
-    SeedGrowTimeHook::InstallAtSymbol("_ZN2rs17getGrowFlowerTimeEPKN2al9LiveActorEPKNS0_11PlacementIdE");
-    SeedUsedHook::InstallAtSymbol("_ZN2rs20isUsedGrowFlowerSeedEPKN2al9LiveActorEPKNS0_11PlacementIdE");
-    KingdomEnterHook::InstallAtSymbol("_ZNK16GameProgressData16isAlreadyGoWorldEi");
-    DisableMoonLockHook::InstallAtSymbol("_ZNK14GameDataHolder18findUnlockShineNumEPbi");
-    AllCheckpointsHook::InstallAtSymbol("_ZN16GameDataFunction22isGotCheckpointInWorldE22GameDataHolderAccessori");
-    CloudSkipHook::InstallAtSymbol("_ZNK10StageScene16isDefeatKoopaLv1Ev");
-    SkipBroodalsHook::InstallAtSymbol("_ZNK10StageScene14isDefeatBossLv1Ev");
-    HintPhotoHook::InstallAtSymbol("_ZN2rs19checkSavedHintPhotoEPKN2al9LiveActorEPKc");
-    ToadRefreshHook::InstallAtSymbol("_ZN2rs34isOnFlagKinopioBrigadeNpcFirstTalkEPKN2al9LiveActorE");
-    WorldWarpChangeStageHook::InstallAtSymbol("_ZN14GameDataHolder31changeNextStageWithDemoWorldWarpEPKc");
-    NoclipHook::InstallAtSymbol("_ZN19PlayerActorHakoniwa8movementEv");
+    Patcher(0x000a46ec).BranchLinkInst((void*)getMofumofuTarget);
+    Patcher(0x000a4698).BranchLinkInst((void*)isPatternReverse);
+    Patcher(0x001d1584).BranchLinkInst((void*)isEnableCheckpointWarp);
+    Patcher(0x004742d0).BranchLinkInst((void*)isEnableSave);
+    Patcher(0x004b1c78).BranchLinkInst((void*)isEnableSave);
+    Patcher(0x004b4fa4).BranchLinkInst((void*)isEnableSave);
 
-    RsDemoHook::InstallAtSymbol("_ZN2rs11isFirstDemoEPKN2al5SceneE");
-    FirstDemoScenarioHook::InstallAtSymbol("_ZN2rs30isFirstDemoScenarioStartCameraEPKN2al9LiveActorE");
-    FirstDemoWorldHook::InstallAtSymbol("_ZN2rs27isFirstDemoWorldIntroCameraEPKN2al5SceneE");
-    FirstDemoMoonRockHook::InstallAtSymbol("_ZNK12MoonRockData38isEnableShowDemoAfterOpenMoonRockFirstEv");
-    ShowDemoHackHook::InstallAtSymbol("_ZNK18DemoStateHackFirst20isEnableShowHackDemoEv");
+    Patcher(0x0049d3d0).BranchLinkInst((void*)setMapTargetUpdateNullNerve);
+    IsPadTriggerA::InstallAtOffset(0x005cfbd0);
+
+    exl::util::RwPages a(exl::util::modules::GetTargetOffset(offsets::ShineRefreshText), 24);
+    strncpy((char*)a.GetRw(), "Practice Mod", 24);
 }
 
 } // namespace pe

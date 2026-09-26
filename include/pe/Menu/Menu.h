@@ -30,6 +30,7 @@ public:
     void drawExpandedCategory();
     void drawInfoWindows();
     bool isEnabled() const { return mIsEnabled; }
+    al::Scene* getCurScene() const { return mScene; }
 
     void savePosition(al::LiveActor* player);
     void loadPosition(al::LiveActor* player);

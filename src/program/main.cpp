@@ -12,7 +12,12 @@
 #include "pe/Menu/UserConfig.h"
 #include "pe/Util/Offsets.h"
 #include "program/imgui_nvn.h"
+#include <heap/seadDisposer.h>
 #include <sead/filedevice/seadFileDeviceMgr.h>
+
+namespace sead {
+IDisposer::IDisposer() : IDisposer(nullptr, HeapNullOption::UseSpecifiedOrContainHeap) {}
+}
 
 HOOK_DEFINE_TRAMPOLINE(FileDeviceMgrCtor) { static void Callback(sead::FileDeviceMgr * thisPtr); };
 void FileDeviceMgrCtor::Callback(sead::FileDeviceMgr* thisPtr)

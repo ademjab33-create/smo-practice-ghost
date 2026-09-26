@@ -37,4 +37,6 @@ public:
     static Timer* sInstance;
 };
 
+void installTimerHooks();
+
 } // namespace pe

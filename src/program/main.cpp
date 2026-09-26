@@ -34,44 +34,79 @@ sead::Heap* getSequenceHeap() {
 }
 }
 
+inline void logDebug(const char* str) {
+    if (!str) return;
+    size_t len = 0;
+    while (str[len]) len++;
+    register u64 x0 asm("x0") = (u64)str;
+    register u64 x1 asm("x1") = (u64)len;
+    asm volatile("svc 0x27" : : "r"(x0), "r"(x1) : "memory");
+}
+
+HOOK_DEFINE_TRAMPOLINE(PrintFormatterOutputString) {
+    static void Callback(const char* str, void* output, const char* str2, int len);
+};
+void PrintFormatterOutputString::Callback(const char* str, void* output, const char* str2, int len) {
+    if (str) {
+        logDebug("[sead::Print] ");
+        logDebug(str);
+        logDebug("\n");
+    }
+    if (output) {
+        Orig(str, output, str2, len);
+    }
+}
+
 class HakoniwaSequence;
 static HakoniwaSequence* sHakoniwaSequence = nullptr;
 
 HOOK_DEFINE_TRAMPOLINE(HakoniwaSequenceInit) { static void Callback(HakoniwaSequence * thisPtr, const al::SequenceInitInfo& info); };
 void HakoniwaSequenceInit::Callback(HakoniwaSequence* thisPtr, const al::SequenceInitInfo& info)
 {
+    logDebug("[PE] HakoniwaSequenceInit START\n");
     Orig(thisPtr, info);
+    logDebug("[PE] HakoniwaSequenceInit Orig DONE\n");
 
     sHakoniwaSequence = thisPtr;
 
     auto* seqHeap = al::getSequenceHeap();
-    pe::getMenuHeap() = sead::ExpHeap::create(1024 * 512, "MenuHeap", seqHeap, 8, sead::ExpHeap::cHeapDirection_Forward, false);
     if (!pe::getMenuHeap()) {
-        pe::getMenuHeap() = seqHeap;
+        pe::getMenuHeap() = sead::ExpHeap::create(1024 * 1024 * 4, "MenuHeap", seqHeap, 8, sead::ExpHeap::cHeapDirection_Forward, false);
+        if (!pe::getMenuHeap()) {
+            pe::getMenuHeap() = seqHeap;
+        }
     }
 
-    sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
-    pe::Menu::createInstance(nullptr);
+    if (!pe::Menu::instance()) {
+        sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+        pe::Menu::createInstance(pe::getMenuHeap());
+    }
+    logDebug("[PE] Menu created successfully\n");
 }
 
 static void drawDbgGui()
 {
-    sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
-    auto* menu = pe::Menu::instance();
-    if (menu) {
-        al::Scene* scene = nullptr;
-        if (sHakoniwaSequence) {
-            scene = *reinterpret_cast<al::Scene**>(reinterpret_cast<u8*>(sHakoniwaSequence) + 0xb0);
-        }
-        menu->update(scene);
-        menu->draw();
+    if (!sHakoniwaSequence || !pe::getMenuHeap()) {
+        return;
     }
+    auto* menu = pe::Menu::instance();
+    if (!menu) {
+        return;
+    }
+    sead::ScopedCurrentHeapSetter setter(pe::getMenuHeap());
+    al::Scene* scene = nullptr;
+    if (sHakoniwaSequence) {
+        scene = *reinterpret_cast<al::Scene**>(reinterpret_cast<u8*>(sHakoniwaSequence) + 0xb0);
+    }
+    menu->update(scene);
+    menu->draw();
 }
 
 extern "C" void exl_main(void* x0, void* x1)
 {
     exl::hook::Initialize();
 
+    PrintFormatterOutputString::InstallAtOffset(0x00746f10);
     FileDeviceMgrCtor::InstallAtOffset(pe::offsets::FileDeviceMgrCtorHookLocation);
     HakoniwaSequenceInit::InstallAtOffset(pe::offsets::HakoniwaSequenceInitHookLocation);
 
@@ -80,6 +115,7 @@ extern "C" void exl_main(void* x0, void* x1)
 
     nvnImGui::InstallHooks();
     nvnImGui::addDrawFunc(drawDbgGui);
+    logDebug("[PE] exl_main initialized\n");
 }
 
 extern "C" NORETURN void exl_exception_entry()

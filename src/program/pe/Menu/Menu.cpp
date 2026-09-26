@@ -101,24 +101,30 @@ static constexpr const char* sCapNames[] {
 
 static void applyOutfit(GameDataHolder* holder, const char* body, const char* cap)
 {
-    static void (*sWearCap)(GameDataHolder*, const char*) = nullptr;
-    static void (*sWearCostume)(GameDataHolder*, const char*) = nullptr;
-    if (!sWearCap) {
-        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sWearCap), "_ZN16GameDataFunction7wearCapEP14GameDataHolderPKc");
+    if (!holder) return;
+    void* dataFile = *(void**)((uintptr_t)holder + 0x20);
+    if (!dataFile) return;
+
+    typedef void (*WearCostumeFn)(void*, const char*);
+    typedef void (*WearCapFn)(void*, const char*);
+
+    static WearCostumeFn sWearCostume = (WearCostumeFn)exl::util::modules::GetTargetOffset(0x004cea90);
+    static WearCapFn sWearCap = (WearCapFn)exl::util::modules::GetTargetOffset(0x004ceab0);
+
+    if (body && sWearCostume) sWearCostume(dataFile, body);
+    if (cap && sWearCap) sWearCap(dataFile, cap);
+
+    // Reload scene so Mario spawns wearing the new outfit
+    if (pe::Menu::instance() && pe::Menu::instance()->getCurScene()) {
+        pe::Menu::instance()->getCurScene()->kill();
     }
-    if (!sWearCostume) {
-        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sWearCostume), "_ZN16GameDataFunction11wearCostumeEP14GameDataHolderPKc");
-    }
-    if (sWearCap) sWearCap(holder, cap);
-    if (sWearCostume) sWearCostume(holder, body);
 }
 
 static void applyDamagePlayer(GameDataHolder* holder)
 {
-    static void (*sDamagePlayer)(GameDataHolderWriter) = nullptr;
-    if (!sDamagePlayer) {
-        nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sDamagePlayer), "_ZN16GameDataFunction12damagePlayerE20GameDataHolderWriter");
-    }
+    if (!holder) return;
+    typedef void (*DamagePlayerFn)(GameDataHolderWriter);
+    static DamagePlayerFn sDamagePlayer = (DamagePlayerFn)exl::util::modules::GetTargetOffset(0x004d3a30);
     if (sDamagePlayer) sDamagePlayer(GameDataHolderWriter(holder));
 }
 
@@ -311,18 +317,9 @@ void Menu::update(al::Scene* scene)
     if (scene && scene->mIsAlive && rs::getPlayerActor(scene) != nullptr) {
         StageScene* stageScene = static_cast<StageScene*>(scene);
         if (stageScene->mHolder) {
-            static const char* (*sGetCurrentStageName)(GameDataHolderAccessor) = nullptr;
-            static const char* (*sTryGetCurrentStageNameHolder)(GameDataHolder*) = nullptr;
-            if (!sGetCurrentStageName && !sTryGetCurrentStageNameHolder) {
-                nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sGetCurrentStageName), "_ZN16GameDataFunction19getCurrentStageNameE22GameDataHolderAccessor");
-                nn::ro::LookupSymbol(reinterpret_cast<uintptr_t*>(&sTryGetCurrentStageNameHolder), "_ZNK14GameDataHolder21tryGetCurrentStageNameEv");
-            }
-            const char* curStage = nullptr;
-            if (sGetCurrentStageName) {
-                curStage = sGetCurrentStageName(GameDataHolderAccessor(stageScene->mHolder));
-            } else if (sTryGetCurrentStageNameHolder) {
-                curStage = sTryGetCurrentStageNameHolder(stageScene->mHolder);
-            }
+            typedef const char* (*TryGetCurrentStageNameFn)(GameDataHolder*);
+            static TryGetCurrentStageNameFn sTryGetCurrentStageName = (TryGetCurrentStageNameFn)exl::util::modules::GetTargetOffset(0x004db1d0);
+            const char* curStage = sTryGetCurrentStageName ? sTryGetCurrentStageName(stageScene->mHolder) : nullptr;
             if (curStage && curStage[0] != '\0') {
                 if (strncmp(mLastStageName, curStage, sizeof(mLastStageName)) != 0) {
                     strncpy(mLastStageName, curStage, sizeof(mLastStageName) - 1);

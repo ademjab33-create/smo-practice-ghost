@@ -36,6 +36,8 @@ namespace offsets {
     const uintptr_t ShineTickHook = 0x001dfd94;
     const uintptr_t CheckpointTouchHook = 0x0021dd90;
 
+    const uintptr_t PlayerActorHakoniwaMovement = 0x003c3b20;
+
 #endif
 
 } // namespace offsets

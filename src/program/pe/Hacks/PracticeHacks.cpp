@@ -379,6 +379,9 @@ void installPracticeHacks()
     DisableMoonLockHook::InstallAtOffset(0x004cda80);
     ToadRefreshHook::InstallAtOffset(0x004dd520);
 
+    // Noclip hook - hooks PlayerActorHakoniwa::movement()
+    NoclipHook::InstallAtOffset(offsets::PlayerActorHakoniwaMovement);
+
     // Timer hooks - shineGrabHook and shineTickHook are defined in Timer.cpp
     // These replace BL instructions at mid-function points in ShineCounter::exeShineCountAdd
     // and StageScene::exeDemoShineGet respectively.
